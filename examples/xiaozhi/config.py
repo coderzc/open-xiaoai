@@ -1,7 +1,7 @@
 import asyncio
 
 
-async def before_wakeup(speaker, text, source):
+async def before_wakeup(speaker, text, source, xiaozhi):
     """
     处理收到的用户消息，并决定是否唤醒小智 AI
 

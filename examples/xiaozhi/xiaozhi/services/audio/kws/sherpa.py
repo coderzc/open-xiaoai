@@ -22,6 +22,7 @@ class _SherpaOnnx:
         self.stream = self.keyword_spotter.create_stream()
 
     def kws(self, frames):
+        # print(f"kws....., {len(frames)}")
         samples = np.frombuffer(frames, dtype=np.int16)
         samples = samples.astype(np.float32) / 32768.0
         self.stream.accept_waveform(16000, samples)

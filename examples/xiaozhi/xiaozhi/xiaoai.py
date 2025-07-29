@@ -10,6 +10,7 @@ from xiaozhi.ref import get_speaker, set_xiaoai
 from xiaozhi.services.audio.stream import GlobalStream
 from xiaozhi.services.speaker import SpeakerManager
 from xiaozhi.utils.base import json_decode
+from xiaozhi.utils.logger import logger
 
 ASCII_BANNER = """
 ▄▖      ▖▖▘    ▄▖▄▖
@@ -80,10 +81,10 @@ class XiaoAI:
             ):
                 text = line.get("payload", {}).get("results")[0].get("text")
                 if not text and not line.get("payload", {}).get("is_vad_begin"):
-                    print("🔥 唤醒小爱")
+                    logger.wakeup("小爱同学")
                     EventManager.on_interrupt()
                 elif text and line.get("payload", {}).get("is_final"):
-                    print(f"🔥 收到指令: {text}")
+                    # print(f"[XiaoAI] 🔥 收到指令: {text}")
                     await EventManager.wakeup(text, "xiaoai")
         elif event_type == "playing":
             get_speaker().status = event_data.lower()
@@ -111,5 +112,6 @@ class XiaoAI:
         open_xiaoai_server.register_fn("on_input_data", cls.on_input_data)
         open_xiaoai_server.register_fn("on_event", cls.__on_event)
         cls.__init_background_event_loop()
+        print("[XiaoAI] 启动小爱音箱服务...")
         print(ASCII_BANNER)
         await open_xiaoai_server.start_server()

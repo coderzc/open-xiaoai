@@ -4,10 +4,13 @@ import re
 import threading
 import time
 
+from requests import session
+
 from xiaozhi.event import EventManager
 from xiaozhi.ref import set_xiaozhi
 from xiaozhi.services.audio.kws import KWS
 from xiaozhi.services.audio.vad import VAD
+from xiaozhi.utils.logger import logger
 from xiaozhi.services.protocols.typing import (
     AbortReason,
     DeviceState,
@@ -262,7 +265,7 @@ class XiaoZhi:
         elif state == "sentence_start":
             text = data.get("text", "")
             if text:
-                print(f"🤖 小智：{text}")
+                logger.ai_response(text)
 
                 verification_code = re.search(r"验证码.*?(\d+)", text) or re.search(
                     r"控制面板.*?(\d+)", text
@@ -290,7 +293,7 @@ class XiaoZhi:
         """处理STT消息"""
         text = data.get("text", "")
         if text:
-            print(f"💬 我说：{text}")
+            logger.user_speech(text)
             self.schedule(lambda: self.set_chat_message("user", text))
 
     def _handle_llm_message(self, data):
@@ -481,3 +484,16 @@ class XiaoZhi:
     def _on_mode_changed(self, auto_mode):
         """处理对话模式变更"""
         pass
+
+    async def send_text(self, text):
+        """发送文字"""
+        # 移除设备状态限制，允许在任何状态下发送文本
+        if self.protocol and self.protocol.is_audio_channel_opened():
+            try:
+                message = {"type": "listen", "mode": "manual", "state": "detect", "text": text}
+                await self.protocol.send_text(json.dumps(message))
+                logger.info(f"已发送文本到小智服务器: {text}")
+            except Exception as e:
+                logger.error(f"send text failed: {e}")
+        else:
+            logger.warning("WebSocket未连接，无法发送文本")

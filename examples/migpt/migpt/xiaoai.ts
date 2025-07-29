@@ -40,6 +40,7 @@ class OpenXiaoAIEngine extends MiGPTEngine {
           : e.data === "Paused"
           ? "paused"
           : "idle";
+
     } else if (e.event === "instruction" && e.data.NewLine) {
       // 收到语音识别结果
       const line = jsonDecode(e.data.NewLine);

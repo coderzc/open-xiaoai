@@ -7,6 +7,7 @@ from xiaozhi.ref import get_xiaozhi
 from xiaozhi.services.protocols.protocol import Protocol
 from xiaozhi.services.protocols.typing import DeviceState
 from xiaozhi.utils.config import ConfigManager
+from xiaozhi.utils.logger import logger
 
 
 class WebsocketProtocol(Protocol):
@@ -80,6 +81,7 @@ class WebsocketProtocol(Protocol):
             try:
                 await asyncio.wait_for(self.hello_received.wait(), timeout=10.0)
                 self.connected = True
+                logger.info(f"[xiaozhi-esp32-server] 连接 {self.WEBSOCKET_URL} 成功")
                 return True
             except asyncio.TimeoutError:
                 if self.on_network_error:
@@ -195,15 +197,17 @@ class WebsocketProtocol(Protocol):
                     await self.on_audio_channel_closed()
             except Exception:
                 pass
+        logger.info(f"[xiaozhi-esp32-server] {self.WEBSOCKET_URL} 通道被关闭, 尝试重连...")
+        await asyncio.sleep(5)
+        await self.open_audio_channel()
 
     async def heartbeat(self):
         while True:
             if self.websocket and get_xiaozhi().device_state == DeviceState.IDLE:
                 try:
-                    await self.send_text(
-                        json.dumps({"session_id": "", "type": "ping"})
-                    )
+                    await self.websocket.ping()
                 except Exception:
+                    print("发送心跳失败")
                     # 发送心跳失败，重新连接
                     await self.open_audio_channel()
             await asyncio.sleep(1)

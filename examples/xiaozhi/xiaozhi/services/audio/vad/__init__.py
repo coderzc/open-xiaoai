@@ -8,6 +8,7 @@ from xiaozhi.services.audio.stream import MyAudio
 from xiaozhi.services.audio.vad.silero import Silero
 from xiaozhi.services.protocols.typing import AudioConfig
 from xiaozhi.utils.base import get_env
+from xiaozhi.utils.logger import logger
 
 
 class _VAD:
@@ -49,6 +50,9 @@ class _VAD:
         if not get_env("CLI"):
             return
 
+        logger.vad_event("启动", "开始VAD语音检测服务")
+        logger.vad_event("配置", f"阈值={self.threshold}, 最小语音时长={self.min_speech_duration}ms")
+        
         self._initialize_audio_stream()
 
         # 启动检测线程
