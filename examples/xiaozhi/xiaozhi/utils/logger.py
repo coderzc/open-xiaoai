@@ -1,5 +1,6 @@
 import logging
 import sys
+import os
 from datetime import datetime
 from typing import Optional
 
@@ -39,11 +40,27 @@ class XiaozhiLogger:
     
     def _setup_logger(self):
         """设置日志记录器"""
-        self.logger.setLevel(logging.INFO)
+        # Get the logging level from the 'LOGLEVEL' environment variable,
+        # defaulting to 'INFO' if not set.
+        log_level = os.environ.get("LOGLEVEL", "INFO").upper()
+        
+        # 级别映射
+        level_map = {
+            'DEBUG': logging.DEBUG,
+            'INFO': logging.INFO,
+            'WARNING': logging.WARNING,
+            'ERROR': logging.ERROR,
+            'CRITICAL': logging.CRITICAL
+        }
+        
+        # 获取日志级别常量
+        numeric_level = level_map.get(log_level, logging.INFO)
+
+        self.logger.setLevel(numeric_level)
         
         # 创建控制台处理器
         console_handler = logging.StreamHandler(sys.stdout)
-        console_handler.setLevel(logging.INFO)
+        console_handler.setLevel(numeric_level)
         
         # 创建格式化器
         formatter = ColoredFormatter(

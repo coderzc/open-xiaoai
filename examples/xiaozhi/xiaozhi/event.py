@@ -70,20 +70,17 @@ class __EventManager:
 
     def on_interrupt(self):
         """用户打断（小爱同学）"""
-        print("on_interrupt")
         self.session_id = self.session_id + 1
         self.update_step(Step.on_interrupt)
         self.start_session()
 
     def on_wakeup(self):
-        print("on_wakeup")
         """用户唤醒（你好小智）"""
         self.session_id = self.session_id + 1
         self.update_step(Step.on_wakeup)
         self.start_session()
 
     def on_tts_end(self, session_id):
-        print("on_tts_end, self.current_step:", self.current_step, session_id)
         """TTS结束"""
         if self.current_step not in [Step.on_tts_start]:
             # 当前 session 已经被打断了，不再处理
@@ -123,7 +120,6 @@ class __EventManager:
         
         await xiaozhi.protocol.send_abort_speaking(AbortReason.ABORT)
 
-        print("self.current_step: ", self.current_step)
         # 小爱同学唤醒时，直接打断
         if self.current_step == Step.on_interrupt:
             return
@@ -153,7 +149,7 @@ class __EventManager:
             return
 
         # 开始说话
-        logger.info("开始说话....")
+        logger.info(f"开始说话...., speech_buffer size: {len(speech_buffer)}")
         set_speech_frames(speech_buffer)
         codec.input_stream.start_stream()  # 开启录音
         await xiaozhi.protocol.send_start_listening(ListeningMode.MANUAL)
@@ -174,7 +170,7 @@ class __EventManager:
     async def wakeup(self, text, source):
         before_wakeup = APP_CONFIG["wakeup"]["before_wakeup"]
         get_kws().pause()  # 暂停 KWS 检测
-        wakeup = await before_wakeup(get_speaker(), text, source, get_xiaozhi())
+        wakeup = await before_wakeup(get_speaker(), text, source, get_xiaozhi(), get_xiaoai())
         get_kws().resume()  # 恢复 KWS 检测
         if wakeup:
             self.on_wakeup()

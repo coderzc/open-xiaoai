@@ -96,7 +96,7 @@ class _KWS:
                 if not self.vad_active:
                     self.vad_active = True
                     self.vad_start_time = time.time()
-                    logger.info(f"VAD: 检测到语音，开始 KWS 检测")
+                    logger.debug(f"VAD: 检测到语音，开始 KWS 检测")
                 
                 self.vad_silence_frames = 0
                 
@@ -127,7 +127,7 @@ class _KWS:
                         # 静音超过阈值，停止处理
                         duration_ms = self.vad_silence_frames * self.frame_duration_ms
                         active_duration_ms = (time.time() - self.vad_start_time) * 1000 if hasattr(self, 'vad_start_time') else -1
-                        logger.info(f"VAD: 检测到持续静音（{duration_ms:.0f}ms），暂停 KWS，本次 KWS 监听时长 {active_duration_ms:.0f}ms")
+                        logger.debug(f"VAD: 检测到持续静音（{duration_ms:.0f}ms），暂停 KWS，本次 KWS 监听时长 {active_duration_ms:.0f}ms")
                         self.vad_active = False
                         self.vad_silence_frames = 0
 

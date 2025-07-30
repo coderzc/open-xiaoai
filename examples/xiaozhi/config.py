@@ -1,7 +1,7 @@
 import asyncio
 
 
-async def before_wakeup(speaker, text, source, xiaozhi):
+async def before_wakeup(speaker, text, source, xiaozhi, xiaoai):
     """
     处理收到的用户消息，并决定是否唤醒小智 AI
 
@@ -69,4 +69,11 @@ APP_CONFIG = {
         "DEVICE_ID": "", #（可选）默认自动生成
         "VERIFICATION_CODE": "", # 首次登陆时，验证码会在这里更新
     },
+    "xiaoai": {
+        "continuous_conversation_mode": True,
+        "exit_command_keywords": ["停止", "退下", "退出", "下去吧"],
+        "max_listening_retries": 2,  # 最多连续重新唤醒次数
+        "exit_prompt": "再见，主人",
+        "listen_notify_voice_url": "http://127.0.0.1:8080/tts_notify.mp3",
+    }
 }
