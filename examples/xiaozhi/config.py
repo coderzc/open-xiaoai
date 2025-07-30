@@ -62,18 +62,18 @@ APP_CONFIG = {
         # 最小静默时长（ms）
         "min_silence_duration": 500,
     },
-    "xiaozhi": {
-        "OTA_URL": "https://api.tenclass.net/xiaozhi/ota/",
-        "WEBSOCKET_URL": "wss://api.tenclass.net/xiaozhi/v1/",
-        "WEBSOCKET_ACCESS_TOKEN": "", #（可选）一般用不到这个值
-        "DEVICE_ID": "", #（可选）默认自动生成
-        "VERIFICATION_CODE": "", # 首次登陆时，验证码会在这里更新
-    },
     "xiaoai": {
         "continuous_conversation_mode": True,
         "exit_command_keywords": ["停止", "退下", "退出", "下去吧"],
         "max_listening_retries": 2,  # 最多连续重新唤醒次数
         "exit_prompt": "再见，主人",
         "listen_notify_voice_url": "http://127.0.0.1:8080/tts_notify.mp3",
+    },
+    "xiaozhi": {
+        "OTA_URL": "https://api.tenclass.net/xiaozhi/ota/",
+        "WEBSOCKET_URL": "wss://api.tenclass.net/xiaozhi/v1/",
+        "WEBSOCKET_ACCESS_TOKEN": "", #（可选）一般用不到这个值
+        "DEVICE_ID": "", #（可选）默认自动生成
+        "VERIFICATION_CODE": "", # 首次登陆时，验证码会在这里更新
     }
 }
