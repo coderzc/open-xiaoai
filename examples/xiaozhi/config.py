@@ -68,6 +68,7 @@ APP_CONFIG = {
         "max_listening_retries": 2,  # 最多连续重新唤醒次数
         "exit_prompt": "再见，主人",
         "listen_notify_voice_url": "http://127.0.0.1:8080/tts_notify.mp3",
+        "continuous_conversation_keywords": ["开启连续对话"]
     },
     "xiaozhi": {
         "OTA_URL": "https://api.tenclass.net/xiaozhi/ota/",

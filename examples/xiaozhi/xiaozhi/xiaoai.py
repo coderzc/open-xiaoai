@@ -36,6 +36,8 @@ class XiaoAI:
     exit_command_keywords = config.get("exit_command_keywords", ["停止", "退下", "退出", "下去吧"])
     exit_prompt = config.get("exit_prompt", "再见，主人")
     listen_notify_voice_url = config.get("listen_notify_voice_url", "")
+    # 开启连续对话唤醒词
+    continuous_conversation_keywords = config.get("continuous_conversation_keywords", ["开启连续对话"])
 
     conversing = False # 是否在连续对话中
     current_retries = 0  # 当前重新唤醒次数
@@ -105,19 +107,21 @@ class XiaoAI:
                     # 避免重复触发
                     if not text and is_vad_begin is False:
                         logger.wakeup("小爱同学")
-                        cls.conversing = True
                         # 开始新的对话，重置重试计数
                         cls.current_retries = 0
                         EventManager.on_interrupt()
                     elif text and is_final:
                         logger.info(f"[XiaoAI] 🔥 收到指令: {text}")
+                        # 收到语音输入，重置重试计数
+                        cls.current_retries = 0                        
                         if any(cmd in text for cmd in cls.exit_command_keywords):
-                            logger.info("[XiaoAI] 👋 收到退出指令，立即退出对话模式")
+                            logger.info("[XiaoAI] 👋 收到退出指令，立即退出连续对话模式")
                             cls.stop_conversation()
                             speaker = get_speaker()
                             await speaker.play(text=cls.exit_prompt)
-                        # 收到语音输入，重置重试计数
-                        cls.current_retries = 0
+                        if any(keyword in text for keyword in cls.continuous_conversation_keywords):
+                            logger.info("[XiaoAI] 👋 收到开启连续对话指令，开启连续对话模式")
+                            cls.conversing = True
                         await EventManager.wakeup(text, "xiaoai")
                     elif is_final and not text:
                         # 小爱监听超时退出：is_final=true and text=""
@@ -140,7 +144,7 @@ class XiaoAI:
                                 await speaker.play(text=cls.exit_prompt)
             elif  (line
                 and line.get("header", {}).get("namespace") == "AudioPlayer"):
-                logger.info("[XiaoAI] 收到播放音频事件，立即退出对话模式")
+                logger.info("[XiaoAI] 收到播放音频事件，立即退出连续对话模式")
                 cls.stop_conversation()
         elif event_type == "playing":
             playing_status = event_data.lower()
@@ -151,7 +155,9 @@ class XiaoAI:
             if cls.continuous_conversation_mode and playing_status == "idle" and cls.conversing:
                 speaker = get_speaker()
                 await speaker.wake_up(awake=True, silent=True)
-                cls.current_retries += 1
+                # 首次进入连续对话模式
+                cls.current_retries = 1
+                logger.info(f"[XiaoAI] 首次进入连续对话模式 ({cls.current_retries}/{cls.max_listening_retries})")
                 logger.info("[XiaoAI] 🎯 TTS播放完毕，重新唤醒小爱等待下一句...")
                 # 播放短提示音表示继续监听
                 await speaker.play(url=cls.listen_notify_voice_url)
