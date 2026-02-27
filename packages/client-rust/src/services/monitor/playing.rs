@@ -2,7 +2,6 @@ use serde::{Deserialize, Serialize};
 use std::future::Future;
 use tokio::task::JoinHandle;
 use tokio::time::{sleep, Duration};
-use std::time::Instant;
 
 use crate::base::AppError;
 use crate::utils::shell::run_shell;
@@ -56,7 +55,6 @@ impl PlayingMonitor {
         Fut: Future<Output = Result<(), AppError>> + Send + 'static,
     {
         let mut last_status = PlayingMonitorEvent::Idle;
-        let mut last_emit_at = Instant::now();
         loop {
             let res = run_shell("mphelper mute_stat").await?;
             let status = if res.stdout.contains("1") {
@@ -67,20 +65,12 @@ impl PlayingMonitor {
                 PlayingMonitorEvent::Idle
             };
 
-            // Some firmware paths don't emit a clear Playing->Idle transition.
-            // Emit periodic idle heartbeats so upper layers can close a turn reliably.
-            let should_emit_heartbeat =
-                status == PlayingMonitorEvent::Idle
-                    && last_status == PlayingMonitorEvent::Idle
-                    && last_emit_at.elapsed() >= Duration::from_millis(500);
-
-            if last_status != status || should_emit_heartbeat {
+            if last_status != status {
                 last_status = status.clone();
                 let _ = on_update(status).await;
-                last_emit_at = Instant::now();
             }
 
-            sleep(Duration::from_millis(50)).await;
+            sleep(Duration::from_millis(10)).await;
         }
     }
 }
