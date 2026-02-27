@@ -2,6 +2,8 @@ use open_xiaoai::services::audio::config::AudioConfig;
 use open_xiaoai::services::monitor::kws::KwsMonitor;
 use serde_json::json;
 use serde_json::Value;
+use std::sync::{Arc, LazyLock};
+use std::time::Instant;
 use std::time::Duration;
 use tokio::time::sleep;
 use tokio_tungstenite::connect_async;
@@ -17,12 +19,24 @@ use open_xiaoai::services::connect::rpc::RPC;
 use open_xiaoai::services::monitor::file::FileMonitorEvent;
 use open_xiaoai::services::monitor::instruction::InstructionMonitor;
 use open_xiaoai::services::monitor::playing::PlayingMonitor;
+use tokio::sync::Mutex;
+use tokio::task::JoinHandle;
 
 struct AppClient {
     kws_monitor: KwsMonitor,
     instruction_monitor: InstructionMonitor,
     playing_monitor: PlayingMonitor,
+    server_stream_monitor_task: Option<JoinHandle<()>>,
 }
+
+#[derive(Default)]
+struct ServerStreamState {
+    active: bool,
+    last_chunk_at: Option<Instant>,
+}
+
+static SERVER_STREAM_STATE: LazyLock<Arc<Mutex<ServerStreamState>>> =
+    LazyLock::new(|| Arc::new(Mutex::new(ServerStreamState::default())));
 
 impl AppClient {
     pub fn new() -> Self {
@@ -30,6 +44,7 @@ impl AppClient {
             kws_monitor: KwsMonitor::new(),
             instruction_monitor: InstructionMonitor::new(),
             playing_monitor: PlayingMonitor::new(),
+            server_stream_monitor_task: None,
         }
     }
 
@@ -103,6 +118,8 @@ impl AppClient {
                     .await
             })
             .await;
+
+        self.start_server_stream_tts_monitor().await;
     }
 
     async fn dispose(&mut self) {
@@ -112,6 +129,51 @@ impl AppClient {
         self.instruction_monitor.stop().await;
         self.playing_monitor.stop().await;
         self.kws_monitor.stop().await;
+        if let Some(task) = self.server_stream_monitor_task.take() {
+            task.abort();
+        }
+        let mut state = SERVER_STREAM_STATE.lock().await;
+        state.active = false;
+        state.last_chunk_at = None;
+    }
+
+    async fn start_server_stream_tts_monitor(&mut self) {
+        if let Some(task) = self.server_stream_monitor_task.take() {
+            task.abort();
+        }
+        let state = SERVER_STREAM_STATE.clone();
+        self.server_stream_monitor_task = Some(tokio::spawn(async move {
+            loop {
+                sleep(Duration::from_millis(100)).await;
+                let should_stop = {
+                    let mut guard = state.lock().await;
+                    if !guard.active {
+                        false
+                    } else {
+                        match guard.last_chunk_at {
+                            Some(last) if last.elapsed() >= Duration::from_millis(800) => {
+                                guard.active = false;
+                                guard.last_chunk_at = None;
+                                true
+                            }
+                            _ => false,
+                        }
+                    }
+                };
+                if should_stop {
+                    let _ = MessageManager::instance()
+                        .send_event(
+                            "tts_state",
+                            Some(json!({
+                                "state": "stop",
+                                "source": "server_stream",
+                                "reason": "chunk_inactive_timeout",
+                            })),
+                        )
+                        .await;
+                }
+            }
+        }));
     }
 }
 
@@ -172,6 +234,27 @@ async fn on_event(event: Event) -> Result<(), AppError> {
 async fn on_stream(stream: Stream) -> Result<(), AppError> {
     let Stream { tag, bytes, .. } = stream;
     if tag.as_str() == "play" {
+        let is_new_stream = {
+            let mut state = SERVER_STREAM_STATE.lock().await;
+            state.last_chunk_at = Some(Instant::now());
+            if !state.active {
+                state.active = true;
+                true
+            } else {
+                false
+            }
+        };
+        if is_new_stream {
+            let _ = MessageManager::instance()
+                .send_event(
+                    "tts_state",
+                    Some(json!({
+                        "state": "start",
+                        "source": "server_stream",
+                    })),
+                )
+                .await;
+        }
         // 播放接收到的音频流
         let _ = AudioPlayer::instance().play(bytes).await;
     }
