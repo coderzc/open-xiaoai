@@ -30,9 +30,8 @@ COPY packages/client-rust ./client-rust
 RUN sed -i 's/\.\.\/\.\.\/packages\///g' Cargo.toml \
     && cargo build --release
 
-# 从 pyproject.toml 中移除 pyaudio 依赖（不需要音频输入设备）
-RUN sed -i '/"pyaudio/d' pyproject.toml \
-    && uv sync --locked --no-install-project --no-editable
+# 安装锁定依赖（保持 pyproject.toml 与 uv.lock 一致）
+RUN uv sync --locked --no-install-project --no-editable
 
 # 构建 wheel 并安装
 RUN uv run maturin build --release && uv remove maturin
