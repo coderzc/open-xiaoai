@@ -43,23 +43,15 @@ WORKDIR /app
 
 # 更新源
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl libopus-dev \
+    libopus-dev \
     && rm -rf /var/lib/apt/lists/*
 
 ENV CLI=true
-ARG KWS_MODELS_URL=https://github.com/idootop/open-xiaoai/releases/download/vad-kws-models/models.zip
 
 COPY --from=builder /app/.venv /app/.venv
 COPY examples/xiaozhi/main.py . 
 COPY examples/xiaozhi/config.py .
 COPY examples/xiaozhi/xiaozhi ./xiaozhi
-
-# Download VAD + KWS models at build time for CI builds where model files are not tracked in git.
-RUN set -eux; \
-    mkdir -p /app/xiaozhi/models; \
-    curl -fsSL "$KWS_MODELS_URL" -o /tmp/models.zip; \
-    python -c "import zipfile; zipfile.ZipFile('/tmp/models.zip').extractall('/app/xiaozhi/models')"; \
-    rm -f /tmp/models.zip
 
 # Ensure sherpa_onnx can locate onnxruntime shared library at runtime.
 RUN set -eux; \
