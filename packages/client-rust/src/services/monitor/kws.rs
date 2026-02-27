@@ -8,36 +8,52 @@ use crate::base::AppError;
 
 use super::file::{FileMonitor, FileMonitorEvent};
 
+pub static KWS_FILE_PATH: &str = "/tmp/open-xiaoai/kws.log";
+
 #[derive(Debug, Serialize, Deserialize)]
 pub enum KwsMonitorEvent {
     Started,
     Keyword(String),
 }
 
-pub struct KwsMonitor;
+pub struct KwsMonitor {
+    file_monitor: FileMonitor,
+}
 
-pub static KWS_FILE_PATH: &str = "/tmp/open-xiaoai/kws.log";
-
-static LAST_TIMESTAMP: AtomicU64 = AtomicU64::new(0);
+impl Default for KwsMonitor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl KwsMonitor {
-    pub async fn start<F, Fut>(on_update: F)
+    pub fn new() -> Self {
+        Self {
+            file_monitor: FileMonitor::new(),
+        }
+    }
+
+    pub async fn start<F, Fut>(&mut self, on_update: F)
     where
         F: Fn(KwsMonitorEvent) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Result<(), AppError>> + Send + 'static,
     {
         let on_update = Arc::new(on_update);
-        FileMonitor::instance()
+        let last_ts_store = Arc::new(AtomicU64::new(0));
+
+        self.file_monitor
             .start(KWS_FILE_PATH, move |event| {
                 let on_update = Arc::clone(&on_update);
+                let last_ts_store = Arc::clone(&last_ts_store);
+
                 async move {
                     if let FileMonitorEvent::NewLine(content) = event {
                         let data = content.split('@').collect::<Vec<&str>>();
                         let timestamp = data[0].parse::<u64>().unwrap();
                         let keyword = data[1].to_string();
-                        let last_timestamp = LAST_TIMESTAMP.load(Ordering::Relaxed);
+                        let last_timestamp = last_ts_store.load(Ordering::Relaxed);
                         if timestamp != last_timestamp {
-                            LAST_TIMESTAMP.store(timestamp, Ordering::Relaxed);
+                            last_ts_store.store(timestamp, Ordering::Relaxed);
                             let kws_event = if keyword == "__STARTED__" {
                                 KwsMonitorEvent::Started
                             } else {
@@ -52,8 +68,7 @@ impl KwsMonitor {
             .await;
     }
 
-    pub async fn stop() {
-        LAST_TIMESTAMP.store(0, Ordering::Relaxed);
-        FileMonitor::instance().stop(KWS_FILE_PATH).await;
+    pub async fn stop(&mut self) {
+        self.file_monitor.stop().await;
     }
 }

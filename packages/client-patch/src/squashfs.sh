@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -e
 
@@ -40,14 +40,20 @@ elif [ "$MODEL" = "LX06" ]; then
     IMAGE_MAX_SIZE=$((0x02800000))
 fi
 
-SIZE=`stat -L -c %s $FIRMWARE/root-patched.squashfs`
-echo "📊 当前固件大小: $SIZE 字节"
+SIZE=$(stat -L -c %s "$FIRMWARE/root-patched.squashfs")
+SIZE_MB=$((SIZE / 1024 / 1024))
+IMAGE_MAX_SIZE_MB=$((IMAGE_MAX_SIZE / 1024 / 1024))
+
+echo "📊 当前固件大小: $SIZE 字节 ($SIZE_MB MB)"
+
 if [ "$SIZE" -ge "$IMAGE_MAX_SIZE" ]; then
-    echo "❌ 固件大小超过允许的最大值：$IMAGE_MAX_SIZE 字节"
+    echo "❌ 固件大小超过允许的最大值：$IMAGE_MAX_SIZE 字节 ($IMAGE_MAX_SIZE_MB MB)"
     exit 1
 fi
 
-echo "✅ 固件大小检查通过，剩余空间: $((IMAGE_MAX_SIZE - SIZE)) 字节"
+REMAINING_BYTES=$((IMAGE_MAX_SIZE - SIZE))
+REMAINING_MB=$((REMAINING_BYTES / 1024 / 1024))
+echo "✅ 固件大小检查通过，剩余可用空间: $REMAINING_BYTES 字节 ($REMAINING_MB MB)"
 
 cp -rf $FIRMWARE $BASE_DIR/assets/$FIRMWARE
 

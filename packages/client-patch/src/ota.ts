@@ -13,36 +13,18 @@ const kSupportedDevices = [
 // 获取 OTA 信息
 async function getOTA(channel: "release" | "current" | "stable" = "release") {
   const MiNA = await getMiNA({
+    did: process.env.MI_DID!,
     userId: process.env.MI_USER!,
     password: process.env.MI_PASS!,
+    passToken: process.env.MI_TOKEN,
+    debug: !!process.env.MI_DEBUG,
   });
   if (!MiNA) {
-    console.log(`❌ 登录失败，请检查小米账号密码是否正确：`);
-    console.log(`当前账号：${process.env.MI_USER}`);
-    console.log(`当前密码：${process.env.MI_PASS}`);
     return;
   }
 
   const devices = await MiNA.getDevices();
-  const speaker = devices?.find(
-    (e: any) =>
-      e.name === process.env.MI_DID || e.miotDID === process.env.MI_DID
-  );
-  if (!speaker) {
-    console.log(`❌ 找不到设备: ${process.env.MI_DID}`);
-    console.log(`可用设备列表：`);
-    console.log(
-      JSON.stringify(
-        devices.map((e: any) => ({
-          name: e.name,
-          did: e.miotDID,
-        })),
-        null,
-        4
-      )
-    );
-    return;
-  }
+  const speaker = MiNA.account.device as any;
 
   if (!kSupportedDevices.includes(speaker.hardware)) {
     console.log(
@@ -65,7 +47,7 @@ async function getOTA(channel: "release" | "current" | "stable" = "release") {
   }
 
   const model = speaker.hardware;
-  const time = new Date().getTime();
+  const time = Date.now();
   const sn = process.env.DEBUG_VERSION ? "" : speaker.serialNumber;
   const version = process.env.DEBUG_VERSION ?? speaker.romVersion;
   const otaInfo = `channel=${channel}&filterID=${sn}&locale=zh_CN&model=${model}&time=${time}&version=${version}&8007236f-a2d6-4847-ac83-c49395ad6d65`;
@@ -88,7 +70,7 @@ async function main() {
   } else {
     ota = await getOTA();
   }
-  if (!ota.url) {
+  if (!ota?.url) {
     console.log(`❌ 获取设备信息失败`);
     process.exit(1);
   }

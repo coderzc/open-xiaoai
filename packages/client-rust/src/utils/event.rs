@@ -73,9 +73,6 @@ impl EventBus {
 
     async fn get_callbacks(&self, event: &str) -> Option<Vec<EventCallback>> {
         let subscribers = self.subscribers.lock().await;
-        match subscribers.get(event) {
-            Some(callbacks) => Some(callbacks.clone()),
-            None => None,
-        }
+        subscribers.get(event).cloned()
     }
 }

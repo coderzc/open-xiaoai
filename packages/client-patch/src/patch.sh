@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -e
 
@@ -22,13 +22,13 @@ apply_patches() {
                     # 创建临时文件用于占位符替换
                     local temp_patch=$(mktemp)
                     # 将补丁文件中的 {SSH_PASSWORD} 替换为 PASSWORD
-                    sed "s/{SSH_PASSWORD}/$PASSWORD/g" "$file" > "$temp_patch"
+                    sed "s|{SSH_PASSWORD}|$PASSWORD|g" "$file" > "$temp_patch"
                     # 应用替换后的补丁
                     patch -p1 < "$temp_patch"
                     # 清理临时文件
                     rm "$temp_patch"
                 elif [[ "$file" == *.sh ]]; then
-                    sh "$file"
+                    bash "$file"
                 fi
             fi
         done

@@ -35,7 +35,7 @@ impl TaskManager {
         let mut tasks = self.tasks.lock().await;
         if let Some(handles) = tasks.remove(tag) {
             for handle in handles {
-                let _ = handle.abort();
+                handle.abort();
             }
         }
     }

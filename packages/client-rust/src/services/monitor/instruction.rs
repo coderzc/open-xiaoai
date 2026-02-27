@@ -6,23 +6,37 @@ use crate::base::AppError;
 
 use super::file::{FileMonitor, FileMonitorEvent};
 
-pub struct InstructionMonitor;
-
 static INSTRUCTION_FILE_PATH: &str = "/tmp/mico_aivs_lab/instruction.log";
 
+pub struct InstructionMonitor {
+    file_monitor: FileMonitor,
+}
+
+impl Default for InstructionMonitor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl InstructionMonitor {
-    pub async fn start<F, Fut>(on_update: F)
+    pub fn new() -> Self {
+        Self {
+            file_monitor: FileMonitor::new(),
+        }
+    }
+
+    pub async fn start<F, Fut>(&mut self, on_update: F)
     where
         F: Fn(FileMonitorEvent) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Result<(), AppError>> + Send + 'static,
     {
-        FileMonitor::instance()
+        self.file_monitor
             .start(INSTRUCTION_FILE_PATH, on_update)
             .await;
     }
 
-    pub async fn stop() {
-        FileMonitor::instance().stop(INSTRUCTION_FILE_PATH).await;
+    pub async fn stop(&mut self) {
+        self.file_monitor.stop().await;
     }
 }
 

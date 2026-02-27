@@ -52,6 +52,7 @@
    - 👉 [小爱音箱自定义唤醒词](examples/kws/README.md)
    - 👉 [小爱音箱接入 MiGPT（完美版）](examples/migpt/README.md)
    - 👉 [小爱音箱接入 Gemini Live API](examples/gemini/README.md)
+   - 👉 [小爱音箱组立体声（支持不同型号机型）](examples/stereo/README.md)
 
 以上皆为抛砖引玉，你也可以亲手编写自己想要的功能，一切由你定义！
 
@@ -89,4 +90,4 @@
 
 ## License
 
-[MIT](LICENSE) License © 2024-PRESENT Del Wang
+MIT License © 2024-PRESENT [Del Wang](https://del.wang)

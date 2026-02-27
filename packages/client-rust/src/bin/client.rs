@@ -16,33 +16,45 @@ use open_xiaoai::services::connect::rpc::RPC;
 use open_xiaoai::services::monitor::instruction::InstructionMonitor;
 use open_xiaoai::services::monitor::playing::PlayingMonitor;
 
-struct AppClient;
+struct AppClient {
+    kws_monitor: KwsMonitor,
+    instruction_monitor: InstructionMonitor,
+    playing_monitor: PlayingMonitor,
+}
 
 impl AppClient {
-    pub async fn connect(url: &str) -> Result<WsStream, AppError> {
+    pub fn new() -> Self {
+        Self {
+            kws_monitor: KwsMonitor::new(),
+            instruction_monitor: InstructionMonitor::new(),
+            playing_monitor: PlayingMonitor::new(),
+        }
+    }
+
+    pub async fn connect(&self, url: &str) -> Result<WsStream, AppError> {
         let (ws_stream, _) = connect_async(url).await?;
         Ok(WsStream::Client(ws_stream))
     }
 
-    pub async fn run() {
+    pub async fn run(&mut self) {
         let url = std::env::args().nth(1).expect("❌ 请输入服务器地址");
         println!("✅ 已启动");
         loop {
-            let Ok(ws_stream) = AppClient::connect(&url).await else {
+            let Ok(ws_stream) = self.connect(&url).await else {
                 sleep(Duration::from_secs(1)).await;
                 continue;
             };
             println!("✅ 已连接: {:?}", url);
-            AppClient::init(ws_stream).await;
+            self.init(ws_stream).await;
             if let Err(e) = MessageManager::instance().process_messages().await {
                 eprintln!("❌ 消息处理异常: {}", e);
             }
-            AppClient::dispose().await;
+            self.dispose().await;
             eprintln!("❌ 已断开连接");
         }
     }
 
-    async fn init(ws_stream: WsStream) {
+    async fn init(&mut self, ws_stream: WsStream) {
         MessageManager::instance().init(ws_stream).await;
         MessageHandler::<Event>::instance()
             .set_handler(on_event)
@@ -59,35 +71,38 @@ impl AppClient {
         rpc.add_command("start_recording", start_recording).await;
         rpc.add_command("stop_recording", stop_recording).await;
 
-        InstructionMonitor::start(|event| async move {
-            MessageManager::instance()
-                .send_event("instruction", Some(json!(event)))
-                .await
-        })
-        .await;
+        self.instruction_monitor
+            .start(|event| async move {
+                MessageManager::instance()
+                    .send_event("instruction", Some(json!(event)))
+                    .await
+            })
+            .await;
 
-        PlayingMonitor::start(|event| async move {
-            MessageManager::instance()
-                .send_event("playing", Some(json!(event)))
-                .await
-        })
-        .await;
+        self.playing_monitor
+            .start(|event| async move {
+                MessageManager::instance()
+                    .send_event("playing", Some(json!(event)))
+                    .await
+            })
+            .await;
 
-        KwsMonitor::start(|event| async move {
-            MessageManager::instance()
-                .send_event("kws", Some(json!(event)))
-                .await
-        })
-        .await;
+        self.kws_monitor
+            .start(|event| async move {
+                MessageManager::instance()
+                    .send_event("kws", Some(json!(event)))
+                    .await
+            })
+            .await;
     }
 
-    async fn dispose() {
+    async fn dispose(&mut self) {
         MessageManager::instance().dispose().await;
         let _ = AudioPlayer::instance().stop().await;
         let _ = AudioRecorder::instance().stop_recording().await;
-        InstructionMonitor::stop().await;
-        PlayingMonitor::stop().await;
-        KwsMonitor::stop().await;
+        self.instruction_monitor.stop().await;
+        self.playing_monitor.stop().await;
+        self.kws_monitor.stop().await;
     }
 }
 
@@ -147,17 +162,14 @@ async fn on_event(event: Event) -> Result<(), AppError> {
 
 async fn on_stream(stream: Stream) -> Result<(), AppError> {
     let Stream { tag, bytes, .. } = stream;
-    match tag.as_str() {
-        "play" => {
-            // 播放接收到的音频流
-            let _ = AudioPlayer::instance().play(bytes).await;
-        }
-        _ => {}
+    if tag.as_str() == "play" {
+        // 播放接收到的音频流
+        let _ = AudioPlayer::instance().play(bytes).await;
     }
     Ok(())
 }
 
 #[tokio::main]
 async fn main() {
-    AppClient::run().await;
+    AppClient::new().run().await;
 }

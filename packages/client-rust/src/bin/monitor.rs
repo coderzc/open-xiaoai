@@ -29,7 +29,7 @@ async fn on_keyword(_keyword: String) {
             .split("\n")
             .filter(|line| !line.trim().is_empty())
             .collect::<Vec<&str>>();
-        if replies.len() > 0 {
+        if !replies.is_empty() {
             wakeup_sounds.clear();
             wakeup_sounds.extend(replies.iter().map(|s| s.to_string()));
         }
@@ -53,14 +53,15 @@ async fn main() {
         on_started().await;
     }
 
-    KwsMonitor::start(|event| async move {
-        match event {
-            KwsMonitorEvent::Started => on_started().await,
-            KwsMonitorEvent::Keyword(keyword) => on_keyword(keyword).await,
-        }
-        Ok(())
-    })
-    .await;
+    KwsMonitor::new()
+        .start(|event| async move {
+            match event {
+                KwsMonitorEvent::Started => on_started().await,
+                KwsMonitorEvent::Keyword(keyword) => on_keyword(keyword).await,
+            }
+            Ok(())
+        })
+        .await;
 
     loop {
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;

@@ -1,13 +1,12 @@
 use serde::{Deserialize, Serialize};
 use std::future::Future;
 use std::path::Path;
-use std::sync::LazyLock;
 use tokio::fs::OpenOptions;
 use tokio::io::{AsyncBufReadExt, AsyncSeekExt, BufReader, SeekFrom};
+use tokio::task::JoinHandle;
 use tokio::time::{sleep, Duration};
 
 use crate::base::AppError;
-use crate::utils::task::TaskManager;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum FileMonitorEvent {
@@ -15,20 +14,22 @@ pub enum FileMonitorEvent {
     NewLine(String),
 }
 
-pub struct FileMonitor;
+pub struct FileMonitor {
+    task_holder: Option<JoinHandle<()>>,
+}
 
-static INSTANCE: LazyLock<FileMonitor> = LazyLock::new(FileMonitor::new);
+impl Default for FileMonitor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl FileMonitor {
-    fn new() -> Self {
-        Self {}
+    pub fn new() -> Self {
+        Self { task_holder: None }
     }
 
-    pub fn instance() -> &'static Self {
-        &INSTANCE
-    }
-
-    pub async fn start<F, Fut>(&self, file_path: &str, on_update: F)
+    pub async fn start<F, Fut>(&mut self, file_path: &str, on_update: F)
     where
         F: Fn(FileMonitorEvent) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Result<(), AppError>> + Send + 'static,
@@ -36,18 +37,19 @@ impl FileMonitor {
         let file_path_clone = file_path.to_string();
 
         let monitor = tokio::spawn(async move {
-            let _ = FileMonitor::start_monitor(file_path_clone.as_str(), on_update).await;
+            let _ = Self::start_monitor(file_path_clone.as_str(), on_update).await;
         });
 
-        TaskManager::instance()
-            .add(&format!("FileMonitor-{}", file_path), monitor)
-            .await;
+        if let Some(old_task) = self.task_holder.replace(monitor) {
+            println!("Aborting old file monitor task");
+            old_task.abort();
+        }
     }
 
-    pub async fn stop(&self, file_path: &str) {
-        TaskManager::instance()
-            .dispose(&format!("FileMonitor-{}", file_path))
-            .await;
+    pub async fn stop(&mut self) {
+        if let Some(handle) = self.task_holder.take() {
+            handle.abort();
+        }
     }
 
     async fn start_monitor<F, Fut>(file_path: &str, on_update: F) -> Result<(), AppError>

@@ -39,7 +39,7 @@ impl AudioPlayer {
         }
 
         if let Some(task) = self.player_task.lock().await.take() {
-            let _ = task.abort();
+            task.abort();
         }
 
         if let Some(mut write_thread) = self.write_thread.lock().await.take() {

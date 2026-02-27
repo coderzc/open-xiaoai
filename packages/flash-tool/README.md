@@ -44,14 +44,16 @@ chmod +x ./flash
 # 执行命令后拔掉小爱音箱的电源线，重新插上电源，等待设备连接
 ./flash connect
 
-# 第 2 步：设置启动延时（5 秒）
-./flash delay 5
+# 第 2 步：设置启动延时（15 秒）
+./flash delay 15
 
 # 第 3 步：切换启动分区
 ./flash switch boot0
 
 # 第 4 步：刷写固件（注意替换固件文件的实际路径）
 ./flash system system0 root-patched.squashfs
+
+# PS: 如果提示刷写错误，可以多试几次，不一定是真的无法刷机
 ```
 
 > [!TIP]
