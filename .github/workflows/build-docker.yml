@@ -1,17 +1,15 @@
-name: Build and Push Docker Image
+name: Build and Push xiaozhi Docker Image
 
 on:
   push:
     branches: [ main ]
     paths:
       - 'examples/xiaozhi/**'
-      - 'packages/client-rust/**'
       - '.github/workflows/build-docker.yml'
   pull_request:
     branches: [ main ]
     paths:
       - 'examples/xiaozhi/**'
-      - 'packages/client-rust/**'
   workflow_dispatch:
 
 env:
