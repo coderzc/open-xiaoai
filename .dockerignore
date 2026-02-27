@@ -1,16 +1,11 @@
-# 排除全部文件
-**/*
-
 # Rust
-!packages/client-rust/**
 packages/client-rust/target
 
 # MiGPT
-!examples/migpt/**
 examples/migpt/target
 examples/migpt/node_modules
 examples/migpt/migpt/open-xiaoai.node
 
 # XiaoZhi
-!examples/xiaozhi/**
 examples/xiaozhi/target
+examples/xiaozhi/.venv
