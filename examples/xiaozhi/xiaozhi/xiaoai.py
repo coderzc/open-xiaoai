@@ -35,7 +35,6 @@ class XiaoAI:
     max_listening_retries = config.get("max_listening_retries", 2)  # 最多连续重新唤醒次数
     exit_command_keywords = config.get("exit_command_keywords", ["停止", "退下", "退出", "下去吧"])
     exit_prompt = config.get("exit_prompt", "再见，主人")
-    listen_notify_voice_url = config.get("listen_notify_voice_url", "")
     # 开启连续对话唤醒词
     continuous_conversation_keywords = config.get("continuous_conversation_keywords", ["开启连续对话"])
 
@@ -134,8 +133,6 @@ class XiaoAI:
                                 cls.current_retries += 1
                                 logger.info(f"[XiaoAI] 🔄 重新唤醒小爱继续监听 ({cls.current_retries}/{cls.max_listening_retries})")
                                 await speaker.wake_up(awake=True, silent=True)
-                                # 播放短提示音表示继续监听
-                                # await speaker.play(url=cls.listen_notify_voice_url)
                             else:
                                 # 达到重试上限，退出对话模式
                                 logger.info(f"[XiaoAI] 💤 达到重试上限({cls.max_listening_retries}次)，退出连续对话模式")
@@ -154,13 +151,11 @@ class XiaoAI:
             # 连续对话：TTS播放完毕后重新唤醒小爱
             if cls.continuous_conversation_mode and playing_status == "idle" and cls.conversing:
                 speaker = get_speaker()
-                await speaker.wake_up(awake=True, silent=True)
+                await speaker.wake_up(awake=True, silent=False)
                 # 首次进入连续对话模式
                 cls.current_retries = 1
                 logger.info(f"[XiaoAI] 首次进入连续对话模式 ({cls.current_retries}/{cls.max_listening_retries})")
                 logger.info("[XiaoAI] 🎯 TTS播放完毕，重新唤醒小爱等待下一句...")
-                # 播放短提示音表示继续监听
-                await speaker.play(url=cls.listen_notify_voice_url)
         
         else:
             # 记录未处理的事件类型，可能包含监听退出信息

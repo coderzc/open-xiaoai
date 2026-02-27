@@ -149,7 +149,7 @@ class __EventManager:
             return
 
         # 开始说话
-        logger.info(f"开始说话...., speech_buffer size: {len(speech_buffer)}")
+        logger.debug(f"开始说话...., speech_buffer size: {len(speech_buffer)}")
         set_speech_frames(speech_buffer)
         codec.input_stream.start_stream()  # 开启录音
         await xiaozhi.protocol.send_start_listening(ListeningMode.MANUAL)
