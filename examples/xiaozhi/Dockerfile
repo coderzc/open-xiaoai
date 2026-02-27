@@ -4,7 +4,7 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # 更新源
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl build-essential libopus-dev \
+    curl build-essential libopus-dev libportaudio2 portaudio19-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # 安装 Rust
@@ -30,11 +30,9 @@ COPY packages/client-rust ./client-rust
 RUN sed -i 's/\.\.\/\.\.\/packages\///g' Cargo.toml \
     && cargo build --release
 
-# 安装依赖（先同步，再移除 pyaudio，再重新同步）
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --no-install-project && \
-    uv remove pyaudio && \
-    uv sync --locked --no-install-project --no-editable
+# 从 pyproject.toml 中移除 pyaudio 依赖（不需要音频输入设备）
+RUN sed -i '/"pyaudio/d' pyproject.toml \
+    && uv sync --locked --no-install-project --no-editable
 
 # 构建 wheel 并安装
 RUN uv run maturin build --release && uv remove maturin
