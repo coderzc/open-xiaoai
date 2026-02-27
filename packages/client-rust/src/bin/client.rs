@@ -1,6 +1,7 @@
 use open_xiaoai::services::audio::config::AudioConfig;
 use open_xiaoai::services::monitor::kws::KwsMonitor;
 use serde_json::json;
+use serde_json::Value;
 use std::time::Duration;
 use tokio::time::sleep;
 use tokio_tungstenite::connect_async;
@@ -13,6 +14,7 @@ use open_xiaoai::services::connect::data::{Event, Request, Response, Stream};
 use open_xiaoai::services::connect::handler::MessageHandler;
 use open_xiaoai::services::connect::message::{MessageManager, WsStream};
 use open_xiaoai::services::connect::rpc::RPC;
+use open_xiaoai::services::monitor::file::FileMonitorEvent;
 use open_xiaoai::services::monitor::instruction::InstructionMonitor;
 use open_xiaoai::services::monitor::playing::PlayingMonitor;
 
@@ -75,7 +77,14 @@ impl AppClient {
             .start(|event| async move {
                 MessageManager::instance()
                     .send_event("instruction", Some(json!(event)))
-                    .await
+                    .await?;
+
+                if let Some(tts_state_event) = extract_tts_state_event(&event) {
+                    MessageManager::instance()
+                        .send_event("tts_state", Some(tts_state_event))
+                        .await?;
+                }
+                Ok(())
             })
             .await;
 
@@ -167,6 +176,50 @@ async fn on_stream(stream: Stream) -> Result<(), AppError> {
         let _ = AudioPlayer::instance().play(bytes).await;
     }
     Ok(())
+}
+
+fn extract_tts_state_event(event: &FileMonitorEvent) -> Option<Value> {
+    let FileMonitorEvent::NewLine(line) = event else {
+        return None;
+    };
+    let root = serde_json::from_str::<Value>(line).ok()?;
+    let header = root.get("header")?;
+    let namespace = header.get("namespace")?.as_str()?;
+    if namespace != "AudioPlayer" {
+        return None;
+    }
+    let name = header
+        .get("name")
+        .and_then(|v| v.as_str())
+        .unwrap_or("unknown");
+    let state = infer_tts_state(name)?;
+    Some(json!({
+        "state": state,
+        "name": name,
+        "source": "instruction",
+    }))
+}
+
+fn infer_tts_state(name: &str) -> Option<&'static str> {
+    let lower = name.to_ascii_lowercase();
+    // Common finish/end tokens from AudioPlayer directives.
+    if lower.contains("finish")
+        || lower.contains("end")
+        || lower.contains("complete")
+        || lower.contains("stop")
+        || lower.contains("pause")
+    {
+        return Some("stop");
+    }
+    // Common start tokens from AudioPlayer directives.
+    if lower.contains("start")
+        || lower.contains("play")
+        || lower.contains("resume")
+        || lower.contains("speak")
+    {
+        return Some("start");
+    }
+    None
 }
 
 #[tokio::main]
