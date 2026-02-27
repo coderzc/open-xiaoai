@@ -30,9 +30,11 @@ COPY packages/client-rust ./client-rust
 RUN sed -i 's/\.\.\/\.\.\/packages\///g' Cargo.toml \
     && cargo build --release
 
-# 安装依赖
+# 安装依赖（先同步，再移除 pyaudio，再重新同步）
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv remove pyaudio && uv sync --locked --no-install-project --no-editable
+    uv sync --no-install-project && \
+    uv remove pyaudio && \
+    uv sync --locked --no-install-project --no-editable
 
 # 构建 wheel 并安装
 RUN uv run maturin build --release && uv remove maturin

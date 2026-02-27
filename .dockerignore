@@ -2,29 +2,15 @@
 **/*
 
 # Rust
-!packages/client-rust/src
-!packages/client-rust/Cargo.toml
-!packages/client-rust/Cargo.lock
+!packages/client-rust/**
+packages/client-rust/target
 
 # MiGPT
-!examples/migpt/src
-!examples/migpt/migpt
-!examples/migpt/config.ts
-!examples/migpt/package.json
-!examples/migpt/pnpm-lock.yaml
-!examples/migpt/Cargo.toml
-!examples/migpt/Cargo.lock
-!examples/migpt/tsconfig.json
+!examples/migpt/**
+examples/migpt/target
+examples/migpt/node_modules
 examples/migpt/migpt/open-xiaoai.node
 
 # XiaoZhi
-!examples/xiaozhi/src
-!examples/xiaozhi/xiaozhi
-!examples/xiaozhi/Cargo.toml
-!examples/xiaozhi/Cargo.lock
-!examples/xiaozhi/config.py
-!examples/xiaozhi/main.py
-!examples/xiaozhi/uv.lock
-!examples/xiaozhi/.python-version
-!examples/xiaozhi/requirements.txt
-!examples/xiaozhi/pyproject.toml
+!examples/xiaozhi/**
+examples/xiaozhi/target
