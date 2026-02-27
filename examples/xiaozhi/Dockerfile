@@ -50,7 +50,17 @@ ENV CLI=true
 
 COPY --from=builder /app/.venv /app/.venv
 COPY examples/xiaozhi/main.py . 
+COPY examples/xiaozhi/config.py .
 COPY examples/xiaozhi/xiaozhi ./xiaozhi
+
+# Ensure sherpa_onnx can locate onnxruntime shared library at runtime.
+RUN set -eux; \
+    ort_dir="/app/.venv/lib/python3.12/site-packages/onnxruntime/capi"; \
+    if [ ! -f "$ort_dir/libonnxruntime.so" ]; then \
+      ln -s "$(basename "$(ls "$ort_dir"/libonnxruntime.so.* | head -n 1)")" "$ort_dir/libonnxruntime.so"; \
+    fi
+
+ENV LD_LIBRARY_PATH=/app/.venv/lib/python3.12/site-packages/onnxruntime/capi
 
 # 先初始化关键词模型，然后启动主程序
 CMD ["/bin/bash", "-c", "source /app/.venv/bin/activate && python xiaozhi/services/audio/kws/keywords.py && python main.py"]
