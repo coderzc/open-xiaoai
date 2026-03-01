@@ -1,4 +1,4 @@
-name: Build and Push xiaozhi Docker Image
+name: Build and Push Docker Image
 
 on:
   push:
@@ -14,7 +14,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository_owner }}/open-xiaoai-xiaozhi
+  IMAGE_NAME: ${{ github.repository_owner }}/open-xiaoai
 
 jobs:
   build:

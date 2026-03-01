@@ -49,9 +49,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ENV CLI=true
 
 COPY --from=builder /app/.venv /app/.venv
-COPY examples/xiaozhi/main.py . 
+COPY examples/xiaozhi/main.py .
 COPY examples/xiaozhi/config.py .
 COPY examples/xiaozhi/xiaozhi ./xiaozhi
+
 
 # Ensure sherpa_onnx can locate onnxruntime shared library at runtime.
 RUN set -eux; \
@@ -61,6 +62,9 @@ RUN set -eux; \
     fi
 
 ENV LD_LIBRARY_PATH=/app/.venv/lib/python3.12/site-packages/onnxruntime/capi
+
+# 暴露 API 服务器端口
+EXPOSE 9092
 
 # 先初始化关键词模型，然后启动主程序
 CMD ["/bin/bash", "-c", "source /app/.venv/bin/activate && python xiaozhi/services/audio/kws/keywords.py && python main.py"]

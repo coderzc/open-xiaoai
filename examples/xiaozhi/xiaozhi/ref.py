@@ -3,6 +3,16 @@ from typing import Any
 GLOBAL_STATES = {}
 
 
+def set_app(app: Any):
+    """Set the main application instance."""
+    GLOBAL_STATES["app"] = app
+
+
+def get_app() -> Any:
+    """Get the main application instance."""
+    return GLOBAL_STATES.get("app")
+
+
 def set_xiaozhi(xiaozhi: Any):
     GLOBAL_STATES["xiaozhi"] = xiaozhi
 

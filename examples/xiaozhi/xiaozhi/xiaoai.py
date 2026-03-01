@@ -1,4 +1,3 @@
-import argparse
 import asyncio
 import threading
 import time
@@ -8,7 +7,7 @@ import open_xiaoai_server
 
 from config import APP_CONFIG
 from xiaozhi.event import EventManager
-from xiaozhi.ref import get_speaker, set_xiaoai
+from xiaozhi.ref import get_speaker
 from xiaozhi.services.audio.stream import GlobalStream
 from xiaozhi.services.speaker import SpeakerManager
 from xiaozhi.utils.base import json_decode
@@ -25,7 +24,6 @@ v1.0.0  by: https://del.wang
 
 
 class XiaoAI:
-    mode = "xiaoai"
     speaker = SpeakerManager()
     async_loop: asyncio.AbstractEventLoop = None
 
@@ -40,23 +38,6 @@ class XiaoAI:
 
     conversing = False # 是否在连续对话中
     current_retries = 0  # 当前重新唤醒次数
-
-    @classmethod
-    def setup_mode(cls):
-        set_xiaoai(cls)
-        parser = argparse.ArgumentParser(
-            description="小爱音箱接入小智 AI | by: https://del.wang"
-        )
-        parser.add_argument(
-            "--mode",
-            type=str,
-            choices=["xiaoai", "xiaozhi"],
-            default="xiaoai",
-            help="运行模式：【xiaoai】使用小爱音箱的输入输出音频（默认）、【xiaozhi】使用本地电脑的输入输出音频",
-        )
-        args = parser.parse_args()
-        if args.mode == "xiaozhi":
-            cls.mode = "xiaozhi"
 
     @classmethod
     def on_input_data(cls, data: bytes):

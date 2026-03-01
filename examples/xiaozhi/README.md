@@ -5,10 +5,25 @@
 > [!IMPORTANT]
 > 本项目只是一个简单的演示程序，抛砖引玉。诸如一些音频压缩、加密传输、多账号管理等功能并未提供，建议只在局域网内测试运行，不推荐部署在公网服务器上（消耗流量 100kb/s），请自行评估相关风险，合理使用。
 
+## 功能特性
+
 - 小爱音箱接入小智 AI
 - 支持连续对话和中途打断
 - 自定义唤醒词（中英文）和提示语
 - 支持自定义消息处理，方便个人定制
+- **HTTP API Server** - 支持远程播放文字/音频/TTS ([详情](#api-server))
+- **连续对话模式** - 小爱原生支持多轮对话，无需反复唤醒
+- **VAD + KWS 唤醒** - 语音活动检测前置，避免唤醒词长期监听，更省电
+- **环境变量配置** - 通过 `XIAOZHI_ENABLE` 和 `API_SERVER_ENABLE` 灵活控制服务启停
+
+## 与上游的主要改进
+
+相较于 [idootop/open-xiaoai](https://github.com/idootop/open-xiaoai) 上游版本，本 fork 主要做了以下增强：
+
+1. **小爱连续对话** - 新增小爱音箱原生的连续对话模式，支持多轮交互
+2. **VAD 前置优化** - 在 KWS 唤醒词检测前增加 VAD 语音活动检测，避免唤醒词模型长期处于工作状态，降低资源消耗
+3. **HTTP API Server** - 新增 RESTful API，支持远程播放文字、音频文件、TTS 合成（参见下方 API 文档）
+4. **服务模块化** - 支持通过环境变量 `XIAOZHI_ENABLE` 和 `API_SERVER_ENABLE` 独立控制小智 AI 连接和 API 服务启停
 
 ## 快速开始
 
@@ -66,20 +81,60 @@ docker run -it --rm -p 4399:4399 -v $(pwd)/config.py:/app/config.py idootop/open
 # 安装 Python 依赖
 uv sync --locked
 
-# 编译运行（GUI 模式，不支持唤醒词唤醒）
+# 编译运行（仅小爱音箱模式）
 uv run main.py
 
+# 开启小智 AI 连接
+XIAOZHI_ENABLE=1 uv run main.py
+
+# 开启 API Server
+API_SERVER_ENABLE=1 uv run main.py
+
+# 全功能模式（小爱 + 小智 AI + API Server）
+XIAOZHI_ENABLE=1 API_SERVER_ENABLE=1 uv run main.py
+
 # 或者设置环境变量 CLI=true，开启 CLI 模式（支持自定义唤醒词）
-CLI=true uv run main.py
+CLI=true XIAOZHI_ENABLE=1 uv run main.py
 ```
 
-如果你只是想体验一下小智 AI，请使用以下命令启动：
+### 环境变量配置
+
+| 环境变量 | 说明 | 示例 |
+|---------|------|------|
+| `XIAOZHI_ENABLE` | 连接小智 AI 服务 | `XIAOZHI_ENABLE=1` |
+| `API_SERVER_ENABLE` | 开启 HTTP API 服务（端口 9092） | `API_SERVER_ENABLE=1` |
+| `CLI` | 使用 CLI 模式（无 GUI，支持唤醒词） | `CLI=true` |
+| `OPENCLAW_ENABLED` | 启用 OpenClaw 集成 | `OPENCLAW_ENABLED=true` |
+| `OPENCLAW_URL` | OpenClaw WebSocket 地址 | `OPENCLAW_URL=ws://localhost:4399` |
+| `OPENCLAW_TOKEN` | OpenClaw 认证令牌 | `OPENCLAW_TOKEN=your_token` |
+
+## OpenClaw 集成
+
+支持通过 [OpenClaw](../openclaw/README.md) 将消息转发到外部 AI Agent 服务。
+
+### 启用 OpenClaw
 
 ```bash
-uv run main.py --mode xiaozhi
+# 启用 OpenClaw（需在 config.py 中配置 URL 和 Token）
+OPENCLAW_ENABLED=true uv run main.py
+
+# 或通过环境变量完整配置
+OPENCLAW_ENABLED=true OPENCLAW_URL=ws://your-server:4399 OPENCLAW_TOKEN=xxx uv run main.py
 ```
 
-该模式下使用电脑的麦克风和扬声器作为音频输入输出设备，无需连接小爱音箱。
+### 在 before_wakeup 中使用
+
+编辑 `config.py`，通过 `app.send_to_openclaw()` 发送消息：
+
+```python
+async def before_wakeup(speaker, text, source, xiaozhi, xiaoai, app):
+    if source == "xiaoai":
+        if text.startswith("问龙虾"):
+            # 发送给 OpenClaw，不唤醒小智
+            await app.send_to_openclaw(text.replace("问龙虾", ""))
+            return False
+    return True
+```
 
 ## 常见问题
 
@@ -153,6 +208,50 @@ APP_CONFIG = {
 如果是英文唤醒词，可以尝试将最小发音用空格分开，比如：比如：'openai' 👉 'open ai'
 
 PS：如果还是不行，建议更换其他更易识别的唤醒词。
+
+## API Server
+
+当设置 `API_SERVER_ENABLE=1` 启动时，会开启 HTTP API 服务（默认端口 9092），支持以下接口：
+
+### API 端点
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/play/text` | 播放文字（TTS） |
+| POST | `/api/play/url` | 播放音频链接 |
+| POST | `/api/play/file` | 上传并播放音频文件 |
+| POST | `/api/tts/doubao` | 豆包 TTS 合成并播放 |
+| GET | `/api/tts/doubao_voices` | 获取可用音色列表 |
+| POST | `/api/wakeup` | 唤醒小爱音箱 |
+| POST | `/api/interrupt` | 打断当前播放 |
+| GET | `/api/status` | 获取播放状态 |
+| GET | `/api/health` | 健康检查 |
+
+### 使用示例
+
+```bash
+# 播放文字
+curl -X POST http://localhost:9092/api/play/text \
+  -H "Content-Type: application/json" \
+  -d '{"text": "你好，我是小爱同学"}'
+
+# 播放音频链接
+curl -X POST http://localhost:9092/api/play/url \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com/audio.mp3"}'
+
+# 上传音频文件
+curl -X POST http://localhost:9092/api/play/file \
+  -F "file=@/path/to/audio.mp3"
+
+# 豆包 TTS
+curl -X POST http://localhost:9092/api/tts/doubao \
+  -H "Content-Type: application/json" \
+  -d '{"text": "你好，这是豆包语音合成", "speaker": "zh_female_cancan_mars_bigtts"}'
+
+# 打断当前播放
+curl -X POST http://localhost:9092/api/interrupt
+```
 
 ### Q: 我想自己编译运行，模型文件在哪里下载？
 

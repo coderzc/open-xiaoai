@@ -1,8 +1,6 @@
 import uuid
 from typing import Any, Callable, ClassVar, Optional
 
-from xiaozhi.ref import get_xiaoai
-
 
 class __GlobalStream:
     def __init__(self):
@@ -115,40 +113,16 @@ class MyAudio:
 
     @classmethod
     def create(cls):
-        if get_xiaoai().mode != "xiaozhi":
-            return MyAudio()
-        else:
-            from pyaudio import PyAudio
-
-            return PyAudio()
+        # 使用小爱音箱音频（通过 Rust 补丁）
+        return MyAudio()
 
     @classmethod
     def get_input_device_index(cls, audio):
-        if get_xiaoai().mode != "xiaozhi":
-            return 0
-        try:
-            device = audio.get_default_input_device_info()
-            return device["index"]
-        except Exception:
-            for i in range(audio.get_device_count()):
-                dev = audio.get_device_info_by_index(i)
-                if dev["maxInputChannels"] > 0:
-                    return i
-            return 0
+        return 0
 
     @classmethod
     def get_output_device_index(cls, audio):
-        if get_xiaoai().mode != "xiaozhi":
-            return 0
-        try:
-            device = audio.get_default_output_device_info()
-            return device["index"]
-        except Exception:
-            for i in range(audio.get_device_count()):
-                dev = audio.get_device_info_by_index(i)
-                if dev["maxOutputChannels"] > 0:
-                    return i
-            return 0
+        return 0
 
     def __init__(self) -> None:
         self._is_terminated = False
