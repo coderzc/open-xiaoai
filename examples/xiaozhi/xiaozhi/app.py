@@ -511,6 +511,12 @@ class MainApp:
                 self.api_server.stop(), self.loop
             )
 
+        # Close OpenClaw connection if connected
+        if OpenClawManager.is_connected():
+            asyncio.run_coroutine_threadsafe(
+                OpenClawManager.close(), self.loop
+            )
+
         if self.loop and self.loop.is_running():
             self.loop.call_soon_threadsafe(self.loop.stop)
 
