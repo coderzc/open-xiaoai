@@ -13,7 +13,7 @@ Configuration (priority: env vars > config file > defaults):
         }
 
     2. Environment variables (override config):
-        export OPENCLAW_ENABLED=true
+        export OPENCLAW_ENABLED=1
         export OPENCLAW_URL=ws://localhost:4399
         export OPENCLAW_TOKEN=your_token
         export OPENCLAW_SESSION_KEY=main
@@ -86,7 +86,7 @@ class OpenClawManager:
         if cls._enabled:
             logger.info(f"[OpenClaw] Enabled, will connect to {cls._url}")
         else:
-            logger.info("[OpenClaw] Disabled (set openclaw.enabled=true in config or OPENCLAW_ENABLED=true env)")
+            logger.info("[OpenClaw] Disabled (set openclaw.enabled=true in config or OPENCLAW_ENABLED=1 env)")
 
         cls._initialized = True
 
@@ -115,15 +115,15 @@ class OpenClawManager:
                     "minProtocol": 3,
                     "maxProtocol": 3,
                     "client": {
-                        "id": "openclaw-xiaoai",
-                        "displayName": "Xiaoai OpenClaw Bridge",
+                        "id": "gateway-client",
+                        "displayName": "Xiaoai Bridge",
                         "version": "1.0.0",
-                        "platform": "open-xiaoai",
-                        "mode": "ui",
+                        "platform": "python",
+                        "mode": "backend",
                         "instanceId": f"xiaoai-{uuid.uuid4().hex[:8]}",
                     },
                     "locale": "zh-CN",
-                    "userAgent": "xiaoai-bridge",
+                    "userAgent": "xiaoai-bridge/1.0.0",
                     "role": "operator",
                     "scopes": ["operator.read", "operator.write"],
                     "caps": [],
