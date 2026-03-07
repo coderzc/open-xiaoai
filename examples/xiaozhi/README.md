@@ -95,6 +95,9 @@ XIAOZHI_ENABLE=1 API_SERVER_ENABLE=1 uv run main.py
 
 # 或者设置环境变量 CLI=true，开启 CLI 模式（支持自定义唤醒词）
 CLI=true XIAOZHI_ENABLE=1 uv run main.py
+
+# 开启 OpenClaw 集成
+OPENCLAW_ENABLED=true uv run main.py
 ```
 
 ### 环境变量配置
@@ -107,6 +110,50 @@ CLI=true XIAOZHI_ENABLE=1 uv run main.py
 | `OPENCLAW_ENABLED` | 启用 OpenClaw 集成 | `OPENCLAW_ENABLED=true` |
 | `OPENCLAW_URL` | OpenClaw WebSocket 地址 | `OPENCLAW_URL=ws://localhost:4399` |
 | `OPENCLAW_TOKEN` | OpenClaw 认证令牌 | `OPENCLAW_TOKEN=your_token` |
+
+## API Server 集成
+
+当设置 `API_SERVER_ENABLE=1` 启动时，会开启 HTTP API 服务（默认端口 9092），支持以下接口：
+
+### API 端点
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/play/text` | 播放文字（TTS） |
+| POST | `/api/play/url` | 播放音频链接 |
+| POST | `/api/play/file` | 上传并播放音频文件 |
+| POST | `/api/tts/doubao` | 豆包 TTS 合成并播放 |
+| GET | `/api/tts/doubao_voices` | 获取可用音色列表 |
+| POST | `/api/wakeup` | 唤醒小爱音箱 |
+| POST | `/api/interrupt` | 打断当前播放 |
+| GET | `/api/status` | 获取播放状态 |
+| GET | `/api/health` | 健康检查 |
+
+### 使用示例
+
+```bash
+# 播放文字
+curl -X POST http://localhost:9092/api/play/text \
+  -H "Content-Type: application/json" \
+  -d '{"text": "你好，我是小爱同学"}'
+
+# 播放音频链接
+curl -X POST http://localhost:9092/api/play/url \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com/audio.mp3"}'
+
+# 上传音频文件
+curl -X POST http://localhost:9092/api/play/file \
+  -F "file=@/path/to/audio.mp3"
+
+# 豆包 TTS
+curl -X POST http://localhost:9092/api/tts/doubao \
+  -H "Content-Type: application/json" \
+  -d '{"text": "你好，这是豆包语音合成", "speaker": "zh_female_cancan_mars_bigtts"}'
+
+# 打断当前播放
+curl -X POST http://localhost:9092/api/interrupt
+```
 
 ## OpenClaw 集成
 
@@ -208,50 +255,6 @@ APP_CONFIG = {
 如果是英文唤醒词，可以尝试将最小发音用空格分开，比如：比如：'openai' 👉 'open ai'
 
 PS：如果还是不行，建议更换其他更易识别的唤醒词。
-
-## API Server
-
-当设置 `API_SERVER_ENABLE=1` 启动时，会开启 HTTP API 服务（默认端口 9092），支持以下接口：
-
-### API 端点
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| POST | `/api/play/text` | 播放文字（TTS） |
-| POST | `/api/play/url` | 播放音频链接 |
-| POST | `/api/play/file` | 上传并播放音频文件 |
-| POST | `/api/tts/doubao` | 豆包 TTS 合成并播放 |
-| GET | `/api/tts/doubao_voices` | 获取可用音色列表 |
-| POST | `/api/wakeup` | 唤醒小爱音箱 |
-| POST | `/api/interrupt` | 打断当前播放 |
-| GET | `/api/status` | 获取播放状态 |
-| GET | `/api/health` | 健康检查 |
-
-### 使用示例
-
-```bash
-# 播放文字
-curl -X POST http://localhost:9092/api/play/text \
-  -H "Content-Type: application/json" \
-  -d '{"text": "你好，我是小爱同学"}'
-
-# 播放音频链接
-curl -X POST http://localhost:9092/api/play/url \
-  -H "Content-Type: application/json" \
-  -d '{"url": "https://example.com/audio.mp3"}'
-
-# 上传音频文件
-curl -X POST http://localhost:9092/api/play/file \
-  -F "file=@/path/to/audio.mp3"
-
-# 豆包 TTS
-curl -X POST http://localhost:9092/api/tts/doubao \
-  -H "Content-Type: application/json" \
-  -d '{"text": "你好，这是豆包语音合成", "speaker": "zh_female_cancan_mars_bigtts"}'
-
-# 打断当前播放
-curl -X POST http://localhost:9092/api/interrupt
-```
 
 ### Q: 我想自己编译运行，模型文件在哪里下载？
 

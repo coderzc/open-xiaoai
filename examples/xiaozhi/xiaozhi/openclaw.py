@@ -75,7 +75,7 @@ class OpenClawManager:
         # Only environment variable controls enable/disable
         env_enabled = get_env("OPENCLAW_ENABLED")
         if env_enabled is not None:
-            cls._enabled = env_enabled.lower() == "true"
+            cls._enabled = env_enabled.lower() in ("1", "true", "yes")
         else:
             cls._enabled = False  # Default to disabled if no env var set
 
@@ -103,7 +103,9 @@ class OpenClawManager:
             return True
 
         try:
+            logger.info(f"[OpenClaw] Connecting to {cls._url}...")
             cls._websocket = await websockets.connect(cls._url)
+            logger.info(f"[OpenClaw] WebSocket connected, sending handshake...")
             cls._receiver_task = asyncio.create_task(cls._receiver())
 
             # Send connect request
@@ -140,7 +142,11 @@ class OpenClawManager:
                 return False
 
         except Exception as e:
-            logger.error(f"[OpenClaw] Connection error: {e}")
+            import traceback
+            logger.error(f"[OpenClaw] Connection error: {type(e).__name__}: {e}")
+            logger.debug(f"[OpenClaw] Connection error traceback: {traceback.format_exc()}")
+            cls._connected = False
+            cls._websocket = None
             return False
 
     @classmethod
@@ -180,6 +186,7 @@ class OpenClawManager:
 
         try:
             idem = str(uuid.uuid4())
+            logger.info(f"[OpenClaw] Sending message: {text[:50]}...")
             # Send agent request and wait for acceptance response
             agent_res = await cls._request(
                 "agent",
@@ -191,6 +198,7 @@ class OpenClawManager:
                 },
                 timeout=60,
             )
+            logger.debug(f"[OpenClaw] Agent response: {agent_res}")
 
             if not agent_res.get("ok"):
                 err = (agent_res.get("error") or {}).get("message") or str(agent_res)
@@ -207,7 +215,9 @@ class OpenClawManager:
             logger.info(f"[OpenClaw] Message accepted, runId: {run_id}")
             return True
         except Exception as e:
-            logger.error(f"[OpenClaw] Failed to send message: {e}")
+            import traceback
+            logger.error(f"[OpenClaw] Failed to send message: {type(e).__name__}: {e}")
+            logger.debug(f"[OpenClaw] Send message traceback: {traceback.format_exc()}")
             return False
 
     @classmethod
@@ -234,6 +244,9 @@ class OpenClawManager:
 
         try:
             return await asyncio.wait_for(fut, timeout=timeout)
+        except asyncio.TimeoutError:
+            logger.error(f"[OpenClaw] Request timeout: {method} (timeout={timeout}s)")
+            raise
         finally:
             cls._pending.pop(req_id, None)
 
