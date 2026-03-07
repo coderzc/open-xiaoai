@@ -7,23 +7,27 @@
 
 ## 功能特性
 
-- 小爱音箱接入小智 AI
+- 小爱音箱接入小智 AI（可选）
+- **纯 CLI 运行** - 无 GUI，轻量级服务端
 - 支持连续对话和中途打断
 - 自定义唤醒词（中英文）和提示语
 - 支持自定义消息处理，方便个人定制
-- **HTTP API Server** - 支持远程播放文字/音频/TTS ([详情](#api-server))
+- **HTTP API Server** - 支持远程播放文字/音频/TTS
 - **连续对话模式** - 小爱原生支持多轮对话，无需反复唤醒
 - **VAD + KWS 唤醒** - 语音活动检测前置，避免唤醒词长期监听，更省电
-- **环境变量配置** - 通过 `XIAOZHI_ENABLE` 和 `API_SERVER_ENABLE` 灵活控制服务启停
+- **OpenClaw 集成** - 支持将消息转发到外部 AI Agent 服务
+- **模块化设计** - 通过环境变量灵活控制服务启停
 
 ## 与上游的主要改进
 
 相较于 [idootop/open-xiaoai](https://github.com/idootop/open-xiaoai) 上游版本，本 fork 主要做了以下增强：
 
-1. **小爱连续对话** - 新增小爱音箱原生的连续对话模式，支持多轮交互
-2. **VAD 前置优化** - 在 KWS 唤醒词检测前增加 VAD 语音活动检测，避免唤醒词模型长期处于工作状态，降低资源消耗
-3. **HTTP API Server** - 新增 RESTful API，支持远程播放文字、音频文件、TTS 合成（参见下方 API 文档）
-4. **服务模块化** - 支持通过环境变量 `XIAOZHI_ENABLE` 和 `API_SERVER_ENABLE` 独立控制小智 AI 连接和 API 服务启停
+1. **移除 GUI，纯 CLI 运行** - 精简代码，更适合服务端部署
+2. **小爱连续对话** - 新增小爱音箱原生的连续对话模式，支持多轮交互
+3. **VAD 前置优化** - 在 KWS 唤醒词检测前增加 VAD 语音活动检测，避免唤醒词模型长期处于工作状态，降低资源消耗
+4. **HTTP API Server** - 新增 RESTful API，支持远程播放文字、音频文件、TTS 合成
+5. **OpenClaw 集成** - 支持将特定指令转发到 OpenClaw 外部 AI Agent
+6. **服务模块化** - 支持通过环境变量 `XIAOZHI_ENABLE` 和 `API_SERVER_ENABLE` 独立控制小智 AI 连接和 API 服务启停
 
 ## 快速开始
 
@@ -42,7 +46,7 @@ cd examples/xiaozhi
 
 然后把 `config.py` 文件里的配置修改成你自己的。
 
-```typescript
+```python
 APP_CONFIG = {
     "wakeup": {
         # 自定义唤醒词
@@ -90,14 +94,11 @@ XIAOZHI_ENABLE=1 uv run main.py
 # 开启 API Server
 API_SERVER_ENABLE=1 uv run main.py
 
-# 全功能模式（小爱 + 小智 AI + API Server）
-XIAOZHI_ENABLE=1 API_SERVER_ENABLE=1 uv run main.py
-
-# 或者设置环境变量 CLI=true，开启 CLI 模式（支持自定义唤醒词）
-CLI=true XIAOZHI_ENABLE=1 uv run main.py
-
 # 开启 OpenClaw 集成
 OPENCLAW_ENABLED=true uv run main.py
+
+# 全功能模式（小爱 + 小智 AI + API Server + OpenClaw）
+XIAOZHI_ENABLE=1 API_SERVER_ENABLE=1 OPENCLAW_ENABLED=true uv run main.py
 ```
 
 ### 环境变量配置
@@ -106,10 +107,10 @@ OPENCLAW_ENABLED=true uv run main.py
 |---------|------|------|
 | `XIAOZHI_ENABLE` | 连接小智 AI 服务 | `XIAOZHI_ENABLE=1` |
 | `API_SERVER_ENABLE` | 开启 HTTP API 服务（端口 9092） | `API_SERVER_ENABLE=1` |
-| `CLI` | 使用 CLI 模式（无 GUI，支持唤醒词） | `CLI=true` |
 | `OPENCLAW_ENABLED` | 启用 OpenClaw 集成 | `OPENCLAW_ENABLED=true` |
 | `OPENCLAW_URL` | OpenClaw WebSocket 地址 | `OPENCLAW_URL=ws://localhost:4399` |
 | `OPENCLAW_TOKEN` | OpenClaw 认证令牌 | `OPENCLAW_TOKEN=your_token` |
+| `OPENCLAW_SESSION_KEY` | OpenClaw 会话标识 | `OPENCLAW_SESSION_KEY=main` |
 
 ## API Server 集成
 
@@ -159,13 +160,23 @@ curl -X POST http://localhost:9092/api/interrupt
 
 支持通过 [OpenClaw](../openclaw/README.md) 将消息转发到外部 AI Agent 服务。
 
-### 启用 OpenClaw
+### 配置 OpenClaw
+
+在 `config.py` 中配置 OpenClaw 连接信息：
+
+```python
+APP_CONFIG = {
+    "openclaw": {
+        "url": "ws://localhost:4399",  # OpenClaw WebSocket 地址
+        "token": "",  # 认证令牌（如果需要）
+        "session_key": "main",  # 会话标识
+    },
+}
+```
+
+或通过环境变量配置：
 
 ```bash
-# 启用 OpenClaw（需在 config.py 中配置 URL 和 Token）
-OPENCLAW_ENABLED=true uv run main.py
-
-# 或通过环境变量完整配置
 OPENCLAW_ENABLED=true OPENCLAW_URL=ws://your-server:4399 OPENCLAW_TOKEN=xxx uv run main.py
 ```
 
@@ -176,9 +187,9 @@ OPENCLAW_ENABLED=true OPENCLAW_URL=ws://your-server:4399 OPENCLAW_TOKEN=xxx uv r
 ```python
 async def before_wakeup(speaker, text, source, xiaozhi, xiaoai, app):
     if source == "xiaoai":
-        if text.startswith("问龙虾"):
+        if text.startswith("让龙虾"):
             # 发送给 OpenClaw，不唤醒小智
-            await app.send_to_openclaw(text.replace("问龙虾", ""))
+            await app.send_to_openclaw(text.replace("让龙虾", ""))
             return False
     return True
 ```
@@ -187,16 +198,16 @@ async def before_wakeup(speaker, text, source, xiaozhi, xiaoai, app):
 
 ### Q：回答太长了，如何打断小智 AI 的回答？
 
-直接召唤“小爱同学”，即可打断小智 AI 的回答 ;)
+直接召唤"小爱同学"，即可打断小智 AI 的回答 ;)
 
 ### Q：第一次运行提示我输入验证码绑定设备，如何操作？
 
 第一次启动对话时，会有语音提示使用验证码绑定设备。请打开你的小智 AI [管理后台](https://xiaozhi.me/)，然后根据提示创建 Agent 绑定设备即可。验证码消息会在终端打印，或者打开你的 `config.py` 文件查看。
 
-```py
+```python
 APP_CONFIG = {
     "xiaozhi": {
-        "VERIFICATION_INFO": "首次登录时，验证码会在这里更新",
+        "VERIFICATION_CODE": "首次登录时，验证码会在这里更新",
     },
     # ... 其他配置
 }
@@ -208,7 +219,7 @@ PS：绑定设备成功后，可能需要重启应用才会生效。
 
 如果你想使用自己部署的 [xiaozhi-esp32-server](https://github.com/xinnan-tech/xiaozhi-esp32-server)，请更新 `config.py` 文件里的接口地址，然后重启应用。
 
-```py
+```python
 APP_CONFIG = {
     "xiaozhi": {
         "OTA_URL": "https://2662r3426b.vicp.fun/xiaozhi/ota/",
@@ -222,7 +233,7 @@ APP_CONFIG = {
 
 你可以调大 `config.py` 配置文件里的 `min_silence_duration` 参数，然后重启应用 / Docker 试试看。
 
-```py
+```python
 APP_CONFIG = {
     "vad": {
         # 最小静默时长（ms）
@@ -240,7 +251,7 @@ APP_CONFIG = {
 
 如果唤醒词还是不敏感，可以先调低 `vad.threshold`，然后重启应用 / Docker 试试看。
 
-```py
+```python
 APP_CONFIG = {
     "vad": {
         # 语音检测阈值（0-1，越小越灵敏）
@@ -252,7 +263,7 @@ APP_CONFIG = {
 
 另外，应用 / Docker 刚刚启动时需要加载模型文件，比较耗时一些，可以等 30s 之后再试试看。
 
-如果是英文唤醒词，可以尝试将最小发音用空格分开，比如：比如：'openai' 👉 'open ai'
+如果是英文唤醒词，可以尝试将最小发音用空格分开，比如：'openai' 👉 'open ai'
 
 PS：如果还是不行，建议更换其他更易识别的唤醒词。
 
