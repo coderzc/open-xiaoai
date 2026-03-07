@@ -7,7 +7,7 @@ import open_xiaoai_server
 
 from config import APP_CONFIG
 from xiaozhi.event import EventManager
-from xiaozhi.ref import get_speaker
+from xiaozhi.ref import get_speaker, set_xiaoai
 from xiaozhi.services.audio.stream import GlobalStream
 from xiaozhi.services.speaker import SpeakerManager
 from xiaozhi.utils.base import json_decode
@@ -161,6 +161,7 @@ class XiaoAI:
 
     @classmethod
     async def init_xiaoai(cls):
+        set_xiaoai(XiaoAI)
         GlobalStream.on_output_data = cls.on_output_data
         open_xiaoai_server.register_fn("on_input_data", cls.on_input_data)
         open_xiaoai_server.register_fn("on_event", cls.__on_event)
