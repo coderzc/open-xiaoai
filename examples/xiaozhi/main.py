@@ -31,6 +31,15 @@ def setup_config():
     connect_xiaozhi = os.environ.get("XIAOZHI_ENABLE", "").lower() in ("1", "true", "yes")
     enable_api_server = os.environ.get("API_SERVER_ENABLE", "").lower() in ("1", "true", "yes")
 
+    logger.info(f"[Main] Config: XIAOZHI_ENABLE={os.environ.get('XIAOZHI_ENABLE', 'not set')}, API_SERVER_ENABLE={os.environ.get('API_SERVER_ENABLE', 'not set')}")
+    logger.info(f"[Main] Parsed: connect_xiaozhi={connect_xiaozhi}, enable_api_server={enable_api_server}")
+
+
+async def _run_xiaoai():
+    """启动小爱音箱服务（会阻塞直到服务器停止）"""
+    set_xiaoai(XiaoAI)
+    await XiaoAI.init_xiaoai()
+
 
 def run_without_xiaozhi():
     """不连接小智 AI，只启动小爱音箱服务 + API Server"""
@@ -42,21 +51,19 @@ def run_without_xiaozhi():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
-    # 注册 XiaoAI 到全局状态（供 SpeakerManager 使用）
-    set_xiaoai(XiaoAI)
+    async def main():
+        global api_server
+        # 先启动 API Server（如果不启用 XiaoAI 单独启动）
+        if enable_api_server:
+            api_server = APIServer(host="0.0.0.0", port=9092)
+            await api_server.start()
 
-    # 启动小爱音箱服务
-    loop.run_until_complete(XiaoAI.init_xiaoai())
-
-    # 按需启动 API Server
-    if enable_api_server:
-        api_server = APIServer(host="0.0.0.0", port=9092)
-        loop.run_until_complete(api_server.start())
-        logger.info("[Main] HTTP API Server started at http://0.0.0.0:9092")
+        # 启动小爱音箱服务（这会阻塞，所以用 gather 同时运行）
+        await _run_xiaoai()
 
     # 保持运行
     try:
-        loop.run_forever()
+        loop.run_until_complete(main())
     except KeyboardInterrupt:
         pass
     finally:
@@ -79,7 +86,6 @@ def run_with_xiaozhi():
     if enable_api_server:
         api_server = APIServer(host="0.0.0.0", port=9092)
         asyncio.run_coroutine_threadsafe(api_server.start(), main_app_instance.loop)
-        logger.info("[Main] HTTP API Server started at http://0.0.0.0:9092")
 
     # 保持运行
     try:
