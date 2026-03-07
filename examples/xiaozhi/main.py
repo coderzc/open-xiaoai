@@ -41,66 +41,64 @@ async def _run_xiaoai():
     await XiaoAI.init_xiaoai()
 
 
-def run_without_xiaozhi():
-    """不连接小智 AI，只启动小爱音箱服务 + API Server"""
-    global api_server, enable_api_server
-
-    logger.info("[Main] 启动模式：仅小爱音箱（不连接小智 AI）")
-
-    # 创建独立的事件循环
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
-    async def main():
-        global api_server
-        # 先启动 API Server（如果不启用 XiaoAI 单独启动）
-        if enable_api_server:
-            api_server = APIServer(host="0.0.0.0", port=9092)
-            await api_server.start()
-
-        # 启动小爱音箱服务（这会阻塞，所以用 gather 同时运行）
-        await _run_xiaoai()
-
-    # 保持运行
-    try:
-        loop.run_until_complete(main())
-    except KeyboardInterrupt:
-        pass
-    finally:
-        if api_server:
-            loop.run_until_complete(api_server.stop())
-        loop.close()
+async def _start_api_server():
+    """启动 API Server"""
+    global api_server
+    api_server = APIServer(host="0.0.0.0", port=9092)
+    await api_server.start()
 
 
-def run_with_xiaozhi():
-    """连接小智 AI，启动完整服务"""
+def run_services(xiaozhi_mode: bool = False):
+    """统一的服务启动入口
+
+    Args:
+        xiaozhi_mode: 是否启动小智 AI 完整服务（包括 VAD/KWS/GUI）
+    """
     global main_app_instance, api_server, enable_api_server
 
-    logger.info("[Main] 启动模式：小爱音箱 + 小智 AI")
+    mode_name = "小爱音箱 + 小智 AI" if xiaozhi_mode else "仅小爱音箱"
+    logger.info(f"[Main] 启动模式：{mode_name}")
 
-    # 启动 MainApp（包含小爱音箱服务、VAD、KWS、小智连接等）
-    main_app_instance = MainApp.instance()
-    main_app_instance.run()
+    if xiaozhi_mode:
+        # 小智模式：MainApp 管理事件循环（在后台线程）
+        main_app_instance = MainApp.instance()
+        main_app_instance.run()
 
-    # 按需启动 API Server（在 MainApp 的事件循环中）
-    if enable_api_server:
-        api_server = APIServer(host="0.0.0.0", port=9092)
-        asyncio.run_coroutine_threadsafe(api_server.start(), main_app_instance.loop)
+        # 在 MainApp 的事件循环中启动 API Server
+        if enable_api_server:
+            asyncio.run_coroutine_threadsafe(_start_api_server(), main_app_instance.loop)
 
-    # 保持运行
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        pass
+        # 主线程保持运行
+        try:
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            pass
+    else:
+        # 仅小爱模式：主线程管理事件循环
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+        async def main():
+            # 先启动 API Server（避免被 XiaoAI 阻塞）
+            if enable_api_server:
+                await _start_api_server()
+            # 启动小爱音箱服务（阻塞直到停止）
+            await _run_xiaoai()
+
+        try:
+            loop.run_until_complete(main())
+        except KeyboardInterrupt:
+            pass
+        finally:
+            if api_server:
+                loop.run_until_complete(api_server.stop())
+            loop.close()
 
 
 def main():
     global connect_xiaozhi
-    if connect_xiaozhi:
-        run_with_xiaozhi()
-    else:
-        run_without_xiaozhi()
+    run_services(xiaozhi_mode=connect_xiaozhi)
     return 0
 
 
