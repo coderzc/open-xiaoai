@@ -5,7 +5,6 @@ This module manages the main application flow, coordinating between:
 - XiaoZhi (AI conversation service)
 - OpenClaw (External integration)
 - Audio system (VAD, KWS, Codec)
-- Display (GUI/CLI)
 """
 
 import asyncio
@@ -19,7 +18,6 @@ from xiaozhi.event import EventManager
 from xiaozhi.ref import set_xiaozhi, set_app
 from xiaozhi.services.audio.kws import KWS
 from xiaozhi.services.audio.vad import VAD
-from xiaozhi.utils.base import get_env
 from xiaozhi.utils.config import ConfigManager
 from xiaozhi.utils.logger import logger
 from xiaozhi.services.protocols.typing import (
@@ -86,9 +84,6 @@ class MainApp:
             EventType.AUDIO_INPUT_READY_EVENT: threading.Event(),
         }
 
-        # Display
-        self.display = None
-
         # XiaoZhi instance (protocol layer)
         self.xiaozhi = None
 
@@ -154,10 +149,6 @@ class MainApp:
             VAD.start()
             KWS.start()
 
-        # Start display
-        self._init_display()
-        self.display.start()
-
     def _run_event_loop(self):
         """Run asyncio event loop in separate thread."""
         asyncio.set_event_loop(self.loop)
@@ -193,29 +184,6 @@ class MainApp:
         # Only start audio trigger if using XiaoZhi mode
         if self._enable_xiaozhi:
             threading.Thread(target=self._audio_input_trigger, daemon=True).start()
-
-    def _init_display(self):
-        """Initialize display."""
-        if get_env("CLI"):
-            from xiaozhi.services.display import no_display
-            self.display = no_display.NoDisplay()
-        else:
-            from xiaozhi.services.display import gui_display
-            self.display = gui_display.GuiDisplay()
-
-        # Set callbacks
-        self.display.set_callbacks(
-            press_callback=self.start_listening,
-            release_callback=self.stop_listening,
-            status_callback=self._get_status_text,
-            text_callback=self._get_current_text,
-            emotion_callback=self._get_current_emotion,
-            mode_callback=self._on_mode_changed,
-            auto_callback=self.toggle_chat_state,
-            abort_callback=lambda: self.abort_speaking(AbortReason.WAKE_WORD_DETECTED),
-        )
-
-        self.xiaozhi.set_display(self.display)
 
     def _main_loop(self):
         """Main application loop."""
@@ -363,78 +331,29 @@ class MainApp:
             self.audio_codec.stop_streams()
 
         if state == DeviceState.IDLE:
-            self.display.update_status("待命")
-            self.display.update_emotion("😶")
+            pass
         elif state == DeviceState.CONNECTING:
-            self.display.update_status("连接中...")
+            pass
         elif state == DeviceState.LISTENING:
-            self.display.update_status("聆听中...")
-            self.display.update_emotion("🙂")
             if self.audio_codec:
                 if self.audio_codec.output_stream.is_active():
                     self.audio_codec.output_stream.stop_stream()
                 if not self.audio_codec.input_stream.is_active():
                     self.audio_codec.input_stream.start_stream()
         elif state == DeviceState.SPEAKING:
-            self.display.update_status("说话中...")
             if self.audio_codec:
                 if self.audio_codec.input_stream.is_active():
                     self.audio_codec.input_stream.stop_stream()
                 if not self.audio_codec.output_stream.is_active():
                     self.audio_codec.output_stream.start_stream()
 
-    def _get_status_text(self):
-        """Get current status text."""
-        states = {
-            DeviceState.IDLE: "待命",
-            DeviceState.CONNECTING: "连接中...",
-            DeviceState.LISTENING: "聆听中...",
-            DeviceState.SPEAKING: "说话中...",
-        }
-        return states.get(self.device_state, "未知")
-
-    def _get_current_text(self):
-        """Get current text."""
-        return self.current_text
-
-    def _get_current_emotion(self):
-        """Get current emotion."""
-        emotions = {
-            "neutral": "😶",
-            "happy": "🙂",
-            "laughing": "😆",
-            "funny": "😂",
-            "sad": "😔",
-            "angry": "😠",
-            "crying": "😭",
-            "loving": "😍",
-            "embarrassed": "😳",
-            "surprised": "😲",
-            "shocked": "😱",
-            "thinking": "🤔",
-            "winking": "😉",
-            "cool": "😎",
-            "relaxed": "😌",
-            "delicious": "🤤",
-            "kissy": "😘",
-            "confident": "😏",
-            "sleepy": "😴",
-            "silly": "😜",
-            "confused": "🙄",
-        }
-        return emotions.get(self.current_emotion, "😶")
-
     def set_chat_message(self, role, message):
         """Set chat message."""
         self.current_text = message
-        if self.display:
-            self.display.update_text(message)
 
     def set_emotion(self, emotion):
         """Set emotion."""
         self.current_emotion = emotion
-        if self.display:
-            self.display.update_emotion(self._get_current_emotion())
 
     # User actions
     def start_listening(self):
@@ -482,16 +401,7 @@ class MainApp:
 
     def alert(self, title, message):
         """Show alert."""
-        if self.display:
-            self.display.update_text(f"{title}: {message}")
-
-    def _on_mode_changed(self, auto_mode):
-        """Handle mode change."""
-        pass
-
-    def toggle_chat_state(self):
-        """Toggle chat state."""
-        pass
+        logger.warning(f"[Alert] {title}: {message}")
 
     # Shutdown
     def shutdown(self):
