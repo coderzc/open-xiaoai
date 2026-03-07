@@ -45,6 +45,20 @@ class OpenClawManager:
     _receiver_task = None
     _pending: dict[str, asyncio.Future] = {}
 
+    # Heartbeat (using OpenClaw tick events + WebSocket built-in ping/pong)
+    _heartbeat_task = None
+    _heartbeat_interval = 60  # seconds (how often to check connection health)
+    _last_tick_time = 0  # last time we received any message/event from server
+    _tick_timeout = 120  # seconds (max silence before considering connection dead)
+
+    # Auto-reconnect
+    _reconnect_task = None
+    _reconnect_enabled = True
+    _reconnect_delay = 1  # initial delay in seconds
+    _reconnect_max_delay = 60  # max delay in seconds
+    _reconnect_attempts = 0
+    _should_reconnect = False  # flag to indicate intentional disconnect vs unexpected
+
     # Config
     _enabled = False
     _url = None
@@ -134,11 +148,17 @@ class OpenClawManager:
 
             if res.get("ok"):
                 cls._connected = True
+                cls._should_reconnect = True
+                cls._reconnect_attempts = 0
+                cls._last_tick_time = asyncio.get_event_loop().time()
                 logger.info(f"[OpenClaw] Connected to {cls._url}")
+                # Start heartbeat monitor task
+                cls._heartbeat_task = asyncio.create_task(cls._heartbeat())
                 return True
             else:
                 error = (res.get("error") or {}).get("message") or "connect failed"
                 logger.error(f"[OpenClaw] Connection failed: {error}")
+                cls._trigger_reconnect()
                 return False
 
         except Exception as e:
@@ -147,12 +167,22 @@ class OpenClawManager:
             logger.debug(f"[OpenClaw] Connection error traceback: {traceback.format_exc()}")
             cls._connected = False
             cls._websocket = None
+            cls._trigger_reconnect()
             return False
 
     @classmethod
     async def close(cls):
         """Close the connection."""
+        cls._should_reconnect = False
         cls._connected = False
+        # Cancel reconnect task
+        if cls._reconnect_task:
+            cls._reconnect_task.cancel()
+            cls._reconnect_task = None
+        # Cancel heartbeat task
+        if cls._heartbeat_task:
+            cls._heartbeat_task.cancel()
+            cls._heartbeat_task = None
         if cls._receiver_task:
             cls._receiver_task.cancel()
             cls._receiver_task = None
@@ -252,15 +282,32 @@ class OpenClawManager:
 
     @classmethod
     async def _receiver(cls):
-        """Background task to receive responses."""
+        """Background task to receive responses and events."""
         try:
             async for message in cls._websocket:
+                # Update last activity time for any message (including WebSocket ping/pong frames)
+                cls._last_tick_time = asyncio.get_event_loop().time()
+
+                if isinstance(message, bytes):
+                    # WebSocket ping/pong frames are handled automatically by websockets library
+                    continue
+
                 if not isinstance(message, str):
                     continue
 
                 try:
                     data = json.loads(message)
-                    if data.get("type") != "res":
+                    msg_type = data.get("type")
+
+                    # Handle event messages (including tick events from OpenClaw)
+                    if msg_type == "event":
+                        event_name = data.get("event", "")
+                        if event_name == "tick":
+                            logger.debug("[OpenClaw] Tick event received")
+                        # Any event counts as server activity
+                        continue
+
+                    if msg_type != "res":
                         continue
 
                     req_id = data.get("id")
@@ -272,8 +319,81 @@ class OpenClawManager:
                         future.set_result(data)
                 except json.JSONDecodeError:
                     pass
-        except Exception:
+        except asyncio.CancelledError:
+            logger.debug("[OpenClaw] Receiver task cancelled")
+            raise
+        except Exception as e:
+            logger.warning(f"[OpenClaw] Receiver error: {type(e).__name__}: {e}")
+        finally:
             cls._connected = False
+            cls._trigger_reconnect()
+
+    @classmethod
+    def _trigger_reconnect(cls):
+        """Trigger reconnection if enabled and not manually closed."""
+        if not cls._should_reconnect or not cls._reconnect_enabled or not cls._enabled:
+            return
+        if cls._reconnect_task is None or cls._reconnect_task.done():
+            cls._reconnect_task = asyncio.create_task(cls._reconnect())
+
+    @classmethod
+    async def _reconnect(cls):
+        """Background task to reconnect with exponential backoff."""
+        while cls._should_reconnect and cls._enabled and not cls._connected:
+            cls._reconnect_attempts += 1
+            delay = min(
+                cls._reconnect_delay * (2 ** (cls._reconnect_attempts - 1)),
+                cls._reconnect_max_delay
+            )
+            logger.info(f"[OpenClaw] Reconnecting in {delay}s (attempt #{cls._reconnect_attempts})...")
+            await asyncio.sleep(delay)
+
+            if cls._connected:
+                break
+
+            try:
+                success = await cls.connect()
+                if success:
+                    logger.info(f"[OpenClaw] Reconnected successfully after {cls._reconnect_attempts} attempts")
+                    break
+            except Exception as e:
+                logger.warning(f"[OpenClaw] Reconnect attempt failed: {e}")
+
+    @classmethod
+    async def _heartbeat(cls):
+        """Background task to monitor connection health.
+
+        Uses WebSocket built-in ping/pong (handled automatically by websockets library)
+        and monitors server activity (tick events or any messages).
+        """
+        try:
+            while cls._connected and cls._websocket:
+                await asyncio.sleep(cls._heartbeat_interval)
+
+                if not cls._connected or not cls._websocket:
+                    break
+
+                # Check if we've heard from the server recently
+                current_time = asyncio.get_event_loop().time()
+                silence_duration = current_time - cls._last_tick_time
+
+                if silence_duration > cls._tick_timeout:
+                    logger.warning(
+                        f"[OpenClaw] Connection appears dead (no activity for {silence_duration:.0f}s), "
+                        f"triggering reconnect"
+                    )
+                    cls._connected = False
+                    cls._trigger_reconnect()
+                    break
+
+                logger.debug(f"[OpenClaw] Connection healthy (last activity {silence_duration:.0f}s ago)")
+        except asyncio.CancelledError:
+            logger.debug("[OpenClaw] Heartbeat task cancelled")
+            raise
+        except Exception as e:
+            logger.error(f"[OpenClaw] Heartbeat error: {e}")
+            cls._connected = False
+            cls._trigger_reconnect()
 
     @classmethod
     def is_connected(cls) -> bool:
