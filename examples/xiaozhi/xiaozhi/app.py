@@ -172,6 +172,8 @@ class MainApp:
 
     def _init_audio(self):
         """Initialize audio codec."""
+        if not self._enable_xiaozhi:
+            return
         try:
             from xiaozhi.services.audio.codec import AudioCodec
 
