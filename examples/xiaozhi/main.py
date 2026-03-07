@@ -5,11 +5,9 @@ import signal
 import sys
 import time
 
-from xiaozhi.xiaoai import XiaoAI
 from xiaozhi.app import MainApp
 from xiaozhi.services.api_server import APIServer
 from xiaozhi.utils.logger import logger
-from xiaozhi.ref import set_xiaoai
 
 
 api_server = None
@@ -35,12 +33,6 @@ def setup_config():
     logger.info(f"[Main] Parsed: connect_xiaozhi={connect_xiaozhi}, enable_api_server={enable_api_server}")
 
 
-async def _run_xiaoai():
-    """启动小爱音箱服务（会阻塞直到服务器停止）"""
-    set_xiaoai(XiaoAI)
-    await XiaoAI.init_xiaoai()
-
-
 async def _start_api_server():
     """启动 API Server"""
     global api_server
@@ -59,41 +51,20 @@ def run_services(xiaozhi_mode: bool = False):
     mode_name = "小爱音箱 + 小智 AI" if xiaozhi_mode else "仅小爱音箱"
     logger.info(f"[Main] 启动模式：{mode_name}")
 
-    if xiaozhi_mode:
-        # 小智模式：MainApp 管理事件循环（在后台线程）
-        main_app_instance = MainApp.instance()
-        main_app_instance.run()
+    # 统一使用 MainApp 管理所有服务
+    main_app_instance = MainApp.instance(enable_xiaozhi=xiaozhi_mode)
+    main_app_instance.run()
 
-        # 在 MainApp 的事件循环中启动 API Server
-        if enable_api_server:
-            asyncio.run_coroutine_threadsafe(_start_api_server(), main_app_instance.loop)
+    # 在 MainApp 的事件循环中启动 API Server
+    if enable_api_server:
+        asyncio.run_coroutine_threadsafe(_start_api_server(), main_app_instance.loop)
 
-        # 主线程保持运行
-        try:
-            while True:
-                time.sleep(1)
-        except KeyboardInterrupt:
-            pass
-    else:
-        # 仅小爱模式：主线程管理事件循环
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-
-        async def main():
-            # 先启动 API Server（避免被 XiaoAI 阻塞）
-            if enable_api_server:
-                await _start_api_server()
-            # 启动小爱音箱服务（阻塞直到停止）
-            await _run_xiaoai()
-
-        try:
-            loop.run_until_complete(main())
-        except KeyboardInterrupt:
-            pass
-        finally:
-            if api_server:
-                loop.run_until_complete(api_server.stop())
-            loop.close()
+    # 主线程保持运行
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        pass
 
 
 def main():
@@ -107,13 +78,10 @@ def setup_graceful_shutdown():
         global api_server, main_app_instance
 
         # 关闭 API Server
-        if api_server:
-            if main_app_instance and main_app_instance.loop:
-                asyncio.run_coroutine_threadsafe(api_server.stop(), main_app_instance.loop)
-            else:
-                asyncio.get_event_loop().run_until_complete(api_server.stop())
+        if api_server and main_app_instance:
+            asyncio.run_coroutine_threadsafe(api_server.stop(), main_app_instance.loop)
 
-        # 关闭 MainApp（如果已创建）
+        # 关闭 MainApp
         if main_app_instance:
             main_app_instance.shutdown()
 

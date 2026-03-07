@@ -36,20 +36,31 @@ class MainApp:
     _instance = None
 
     @classmethod
-    def instance(cls):
-        """Get singleton instance."""
+    def instance(cls, enable_xiaozhi: bool = True):
+        """Get singleton instance.
+
+        Args:
+            enable_xiaozhi: Whether to enable XiaoZhi AI connection (default: True)
+        """
         if cls._instance is None:
-            cls._instance = MainApp()
+            cls._instance = MainApp(enable_xiaozhi=enable_xiaozhi)
         return cls._instance
 
-    def __init__(self):
-        """Initialize the main application."""
+    def __init__(self, enable_xiaozhi: bool = True):
+        """Initialize the main application.
+
+        Args:
+            enable_xiaozhi: Whether to enable XiaoZhi AI connection
+        """
         if MainApp._instance is not None:
             raise Exception("MainApp is singleton, use instance() to get instance")
         MainApp._instance = self
 
         # Config
         self.config = ConfigManager.instance()
+
+        # Feature flags
+        self._enable_xiaozhi = enable_xiaozhi
 
         # Device state
         self.device_state = DeviceState.IDLE
@@ -91,11 +102,6 @@ class MainApp:
 
     def run(self):
         """Start the main application."""
-        # Create XiaoZhi instance (handles protocol)
-        self.xiaozhi = XiaoZhi.instance()
-        self.xiaozhi.set_app(self)  # Give xiaozhi reference to app
-        set_xiaozhi(self.xiaozhi)   # Register for get_xiaozhi()
-
         # Create event loop thread
         self.loop_thread = threading.Thread(target=self._run_event_loop)
         self.loop_thread.daemon = True
@@ -106,8 +112,17 @@ class MainApp:
         # Initialize XiaoAI service
         asyncio.run_coroutine_threadsafe(XiaoAI.init_xiaoai(), self.loop)
 
-        # Initialize XiaoZhi connection
-        asyncio.run_coroutine_threadsafe(self._init_xiaozhi(), self.loop)
+        if self._enable_xiaozhi:
+            # Create XiaoZhi instance (handles protocol)
+            self.xiaozhi = XiaoZhi.instance()
+            self.xiaozhi.set_app(self)  # Give xiaozhi reference to app
+            set_xiaozhi(self.xiaozhi)   # Register for get_xiaozhi()
+
+            # Initialize XiaoZhi connection
+            asyncio.run_coroutine_threadsafe(self._init_xiaozhi(), self.loop)
+        else:
+            # Without XiaoZhi, still init audio for display/speaker
+            self._init_audio()
 
         # Initialize OpenClaw if enabled
         if OpenClawManager.is_enabled():
@@ -118,9 +133,10 @@ class MainApp:
         main_loop_thread.daemon = True
         main_loop_thread.start()
 
-        # Start audio services
-        VAD.start()
-        KWS.start()
+        # Start audio services (only if XiaoZhi enabled, otherwise managed by XiaoAI)
+        if self._enable_xiaozhi:
+            VAD.start()
+            KWS.start()
 
         # Start display
         self._init_display()
@@ -153,11 +169,14 @@ class MainApp:
             from xiaozhi.services.audio.codec import AudioCodec
 
             self.audio_codec = AudioCodec()
-            self.xiaozhi.set_audio_codec(self.audio_codec)
+            if self.xiaozhi:
+                self.xiaozhi.set_audio_codec(self.audio_codec)
         except Exception as e:
             self.alert("Error", f"Failed to initialize audio: {e}")
 
-        threading.Thread(target=self._audio_input_trigger, daemon=True).start()
+        # Only start audio trigger if using XiaoZhi mode
+        if self._enable_xiaozhi:
+            threading.Thread(target=self._audio_input_trigger, daemon=True).start()
 
     def _init_display(self):
         """Initialize display."""
