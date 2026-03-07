@@ -28,6 +28,7 @@ from xiaozhi.services.protocols.typing import (
     EventType,
 )
 from xiaozhi.openclaw import OpenClawManager
+from xiaozhi.services.api_server import APIServer
 
 
 class MainApp:
@@ -91,6 +92,10 @@ class MainApp:
         # XiaoZhi instance (protocol layer)
         self.xiaozhi = None
 
+        # API Server
+        self.api_server = None
+        self._enable_api_server = False
+
         set_app(self)
 
     @property
@@ -100,8 +105,14 @@ class MainApp:
             return self.xiaozhi.protocol
         return None
 
-    def run(self):
-        """Start the main application."""
+    def run(self, enable_api_server: bool = False):
+        """Start the main application.
+
+        Args:
+            enable_api_server: Whether to start the HTTP API Server
+        """
+        self._enable_api_server = enable_api_server
+
         # Create event loop thread
         self.loop_thread = threading.Thread(target=self._run_event_loop)
         self.loop_thread.daemon = True
@@ -127,6 +138,11 @@ class MainApp:
         # Initialize OpenClaw if enabled
         if OpenClawManager.is_enabled():
             asyncio.run_coroutine_threadsafe(OpenClawManager.connect(), self.loop)
+
+        # Start API Server if enabled
+        if self._enable_api_server:
+            self.api_server = APIServer(host="0.0.0.0", port=9092)
+            asyncio.run_coroutine_threadsafe(self.api_server.start(), self.loop)
 
         # Start main loop thread
         main_loop_thread = threading.Thread(target=self._main_loop)
@@ -488,6 +504,11 @@ class MainApp:
         if self.xiaozhi:
             asyncio.run_coroutine_threadsafe(
                 self.xiaozhi.disconnect(), self.loop
+            )
+
+        if self.api_server:
+            asyncio.run_coroutine_threadsafe(
+                self.api_server.stop(), self.loop
             )
 
         if self.loop and self.loop.is_running():
