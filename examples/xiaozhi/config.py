@@ -127,7 +127,7 @@ APP_CONFIG = {
     },
     # OpenClaw Configuration
     "openclaw": {
-        "url": "ws://localhost:4399",  # OpenClaw WebSocket 地址
+        "url": "ws://localhost:18789",  # OpenClaw WebSocket 地址
         "token": "",  # OpenClaw 认证令牌
         "session_key": "main",  # 会话标识
     },
