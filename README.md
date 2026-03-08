@@ -25,15 +25,16 @@
 
 ## 🌟 推荐：Open-XiaoAI Bridge
 
-> 如果你只想快速体验小爱音箱接入 AI 对话的能力，强烈推荐使用独立的 **[open-xiaoai-bridge](https://github.com/coderzc/open-xiaoai-bridge)** 项目。
+> **[open-xiaoai-bridge](https://github.com/coderzc/open-xiaoai-bridge)** 是本项目的官方扩展，提供更丰富的 AI 接入能力和更灵活的扩展机制。
 
-**[Open-XiaoAI Bridge](https://github.com/coderzc/open-xiaoai-bridge)** 是小爱音箱与外部 AI 服务（小智 AI、OpenClaw 等）的桥接器，纯 CLI 运行，支持：
+**[Open-XiaoAI Bridge](https://github.com/coderzc/open-xiaoai-bridge)** 是小爱音箱与外部 AI 服务（小智 AI、OpenClaw 等）的桥接器，支持：
 
-- ✅ 小爱音箱接入小智 AI（可选）
-- ✅ 自定义唤醒词（中英文）
-- ✅ HTTP API Server（远程控制）
-- ✅ OpenClaw 集成（AI Agent）
-- ✅ 模块化设计（按需启用功能）
+- 🤖 **多 AI 接入** - 同时支持小智 AI、OpenClaw、自定义 Agent
+- 🎙️ **自定义唤醒词** - 中英文唤醒词，VAD + KWS 语音检测
+- 🌐 **HTTP API** - 远程播放文字/音频/TTS，完整 REST 接口
+- 🔗 **OpenClaw 集成** - 对接外部 AI Agent 服务
+- 🧩 **模块化设计** - 按需启用功能，灵活配置
+- 💬 **连续对话** - 原生支持多轮对话，无需反复唤醒
 
 **GitHub**: https://github.com/coderzc/open-xiaoai-bridge
 
@@ -63,7 +64,7 @@
 1. 刷机更新小爱音箱补丁固件，开启并 SSH 连接到小爱音箱 👉 [教程](docs/flash.md)
 2. 在小爱音箱上安装运行 Client 端补丁程序 👉 [教程](packages/client-rust/README.md)
 3. 运行以下演示程序，体验小爱音箱的全新能力 ✨
-   - 👉 [小爱音箱 AI Bridge（小智/OpenClaw）](examples/bridge/README.md)（已独立为 [open-xiaoai-bridge](https://github.com/coderzc/open-xiaoai-bridge)）
+   - 👉 [小爱音箱 AI Bridge（小智](examples/bridge/README.md)）
    - 👉 [小爱音箱自定义唤醒词](examples/kws/README.md)
    - 👉 [小爱音箱接入 MiGPT（完美版）](examples/migpt/README.md)
    - 👉 [小爱音箱接入 Gemini Live API](examples/gemini/README.md)
