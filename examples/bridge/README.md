@@ -141,17 +141,6 @@ flowchart TB
    Rust Client → 小爱音箱播放
    ```
 
-## 与上游的主要改进
-
-相较于 [idootop/open-xiaoai](https://github.com/idootop/open-xiaoai) 上游版本，本 fork 主要做了以下增强：
-
-1. **移除 GUI，纯 CLI 运行** - 精简代码，更适合服务端部署
-2. **小爱连续对话** - 新增小爱音箱原生的连续对话模式，支持多轮交互
-3. **VAD 前置优化** - 在 KWS 唤醒词检测前增加 VAD 语音活动检测，避免唤醒词模型长期处于工作状态，降低资源消耗
-4. **HTTP API Server** - 新增 RESTful API，支持远程播放文字、音频文件、TTS 合成
-5. **OpenClaw 集成** - 支持将特定指令转发到 OpenClaw 外部 AI Agent
-6. **服务模块化** - 支持通过环境变量 `XIAOZHI_ENABLE` 和 `API_SERVER_ENABLE` 独立控制小智 AI 连接和 API 服务启停
-
 ## 快速开始
 
 > [!NOTE]
