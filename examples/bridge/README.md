@@ -1,8 +1,8 @@
 # Open-XiaoAI Bridge
 
-[Open-XiaoAI](https://github.com/idootop/open-xiaoai) 的 Python 版 Server 端，作为小爱音箱与外部 AI 服务（小智 AI、OpenClaw 等）的桥接器。
+小爱音箱与外部 AI 服务（小智 AI、OpenClaw 等）的桥接器，纯 CLI 轻量级服务端。
 
-> 本模块由 `examples/xiaozhi/` 演进而来，在保留小智 AI 接入能力的基础上，新增 OpenClaw 集成、HTTP API Server 等功能，成为更通用的 AI 接入桥接方案。
+> 本项目由 [Open-XiaoAI](https://github.com/idootop/open-xiaoai) 的 `examples/xiaozhi/` 演进而来，在保留小智 AI 接入能力的基础上，新增 OpenClaw 集成、HTTP API Server 等功能，未来将成为独立项目发展。
 
 ## 功能特性
 
@@ -382,11 +382,3 @@ PS：如果还是不行，建议更换其他更易识别的唤醒词。
 ### Q: 我想自己编译运行，模型文件在哪里下载？
 
 由于 ASR 相关模型文件体积较大，并未直接提交在 git 仓库中，你可以在 release 中下载 [VAD + KWS 相关模型](https://github.com/idootop/open-xiaoai/releases/tag/vad-kws-models)，然后解压到 `core/models` 路径下即可。
-
-## 相关项目
-
-- [oxa-server](https://github.com/pu-007/oxa-server): 提供了更强大易用的 config.py 的配置方式
-
-## 鸣谢
-
-该演示使用的 Python 版小智 AI 客户端基于 [py-xiaozhi](https://github.com/Huang-junsen/py-xiaozhi) 项目，特此鸣谢。
