@@ -19,10 +19,25 @@
 在上一个 [MiGPT](https://github.com/idootop/mi-gpt) 项目中，我们已经实现将 ChatGPT 接入到小爱音箱。
 
 这一次 [Open-XiaoAI](https://github.com/idootop/open-xiaoai) 再次进化，直接接管小爱音箱的“耳朵”和“嘴巴”，
-
 通过多模态大模型和 AI Agent，将小爱音箱的潜力完全释放，解锁无限可能。
 
 **未来由你定义!**
+
+## 🌟 推荐：Open-XiaoAI Bridge
+
+> 如果你只想快速体验小爱音箱接入 AI 对话的能力，强烈推荐使用独立的 **[open-xiaoai-bridge](https://github.com/coderzc/open-xiaoai-bridge)** 项目。
+
+**[Open-XiaoAI Bridge](https://github.com/coderzc/open-xiaoai-bridge)** 是小爱音箱与外部 AI 服务（小智 AI、OpenClaw 等）的桥接器，纯 CLI 运行，支持：
+
+- ✅ 小爱音箱接入小智 AI（可选）
+- ✅ 自定义唤醒词（中英文）
+- ✅ HTTP API Server（远程控制）
+- ✅ OpenClaw 集成（AI Agent）
+- ✅ 模块化设计（按需启用功能）
+
+**GitHub**: https://github.com/coderzc/open-xiaoai-bridge
+
+---
 
 ## 你的声音 + 小爱音箱 = 无限可能
 
@@ -53,7 +68,8 @@
    - 👉 [小爱音箱接入 MiGPT（完美版）](examples/migpt/README.md)
    - 👉 [小爱音箱接入 Gemini Live API](examples/gemini/README.md)
    - 👉 [小爱音箱组立体声（支持不同型号机型）](examples/stereo/README.md)
-   - 👉 [小爱音箱接入 OpenClaw](examples/openclaw/README.md)
+   - 👉 [小爱音箱接入 OpenClaw](https://github.com/coderzc/open-xiaoai-bridge/blob/main/README.md)
+
 
 以上皆为抛砖引玉，你也可以亲手编写自己想要的功能，一切由你定义！
 
@@ -69,6 +85,7 @@
 - https://github.com/idootop/migpt-next
 - https://github.com/yihong0618/xiaogpt
 - https://github.com/hanxi/xiaomusic
+- https://github.com/coderzc/open-xiaoai-bridge
 
 ## 参考链接
 
