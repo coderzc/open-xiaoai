@@ -193,7 +193,7 @@ APP_CONFIG = {
 推荐使用以下命令，直接 Docker 一键运行。
 
 ```shell
-docker run -it --rm -p 4399:4399 -v $(pwd)/config.py:/app/config.py idootop/open-xiaoai-xiaozhi:latest
+docker run -it --rm -p 4399:4399 -v $(pwd)/config.py:/app/config.py idootop/open-xiaoai-bridge:latest
 ```
 
 ### 编译运行
@@ -231,7 +231,7 @@ XIAOZHI_ENABLE=1 API_SERVER_ENABLE=1 OPENCLAW_ENABLED=true uv run main.py
 | `XIAOZHI_ENABLE` | 连接小智 AI 服务 | `XIAOZHI_ENABLE=1` |
 | `API_SERVER_ENABLE` | 开启 HTTP API 服务（端口 9092） | `API_SERVER_ENABLE=1` |
 | `OPENCLAW_ENABLED` | 启用 OpenClaw 集成 | `OPENCLAW_ENABLED=true` |
-| `OPENCLAW_URL` | OpenClaw WebSocket 地址 | `OPENCLAW_URL=ws://localhost:4399` |
+| `OPENCLAW_URL` | OpenClaw WebSocket 地址 | `OPENCLAW_URL=ws://localhost:18789` |
 | `OPENCLAW_TOKEN` | OpenClaw 认证令牌 | `OPENCLAW_TOKEN=your_token` |
 | `OPENCLAW_SESSION_KEY` | OpenClaw 会话标识 | `OPENCLAW_SESSION_KEY=main` |
 
@@ -290,7 +290,7 @@ curl -X POST http://localhost:9092/api/interrupt
 ```python
 APP_CONFIG = {
     "openclaw": {
-        "url": "ws://localhost:4399",  # OpenClaw WebSocket 地址
+        "url": "ws://localhost:18789",  # OpenClaw WebSocket 地址
         "token": "",  # 认证令牌（如果需要）
         "session_key": "main",  # 会话标识
     },
@@ -300,7 +300,7 @@ APP_CONFIG = {
 或通过环境变量配置：
 
 ```bash
-OPENCLAW_ENABLED=true OPENCLAW_URL=ws://your-server:4399 OPENCLAW_TOKEN=xxx uv run main.py
+OPENCLAW_ENABLED=true OPENCLAW_URL=ws://your-server:18789 OPENCLAW_TOKEN=xxx uv run main.py
 ```
 
 ### 在 before_wakeup 中使用
