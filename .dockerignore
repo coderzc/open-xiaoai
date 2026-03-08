@@ -6,6 +6,6 @@ examples/migpt/target
 examples/migpt/node_modules
 examples/migpt/migpt/open-xiaoai.node
 
-# XiaoZhi
-examples/xiaozhi/target
-examples/xiaozhi/.venv
+# Bridge
+examples/bridge/target
+examples/bridge/.venv

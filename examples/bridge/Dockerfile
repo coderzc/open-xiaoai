@@ -23,7 +23,7 @@ RUN echo '[ -s "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"' >> "$BASH_ENV"
 WORKDIR /app
 
 # 复制项目文件
-COPY examples/xiaozhi .
+COPY examples/bridge .
 COPY packages/client-rust ./client-rust
 
 # 构建
@@ -49,9 +49,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ENV CLI=true
 
 COPY --from=builder /app/.venv /app/.venv
-COPY examples/xiaozhi/main.py .
-COPY examples/xiaozhi/config.py .
-COPY examples/xiaozhi/xiaozhi ./xiaozhi
+COPY examples/bridge/main.py .
+COPY examples/bridge/config.py .
+COPY examples/bridge/xiaozhi ./xiaozhi
 
 
 # Ensure sherpa_onnx can locate onnxruntime shared library at runtime.

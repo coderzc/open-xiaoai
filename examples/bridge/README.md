@@ -1,6 +1,8 @@
-# Open-XiaoAI x 小智 AI
+# Open-XiaoAI Bridge
 
-[Open-XiaoAI](https://github.com/idootop/open-xiaoai) 的 Python 版 Server 端，用来演示小爱音箱接入[小智 AI](https://github.com/78/xiaozhi-esp32)。
+[Open-XiaoAI](https://github.com/idootop/open-xiaoai) 的 Python 版 Server 端，作为小爱音箱与外部 AI 服务（小智 AI、OpenClaw 等）的桥接器。
+
+> 本模块由 `examples/xiaozhi/` 演进而来，在保留小智 AI 接入能力的基础上，新增 OpenClaw 集成、HTTP API Server 等功能，成为更通用的 AI 接入桥接方案。
 
 > [!IMPORTANT]
 > 本项目只是一个简单的演示程序，抛砖引玉。诸如一些音频压缩、加密传输、多账号管理等功能并未提供，建议只在局域网内测试运行，不推荐部署在公网服务器上（消耗流量 100kb/s），请自行评估相关风险，合理使用。
@@ -17,6 +19,130 @@
 - **VAD + KWS 唤醒** - 语音活动检测前置，避免唤醒词长期监听，更省电
 - **OpenClaw 集成** - 支持将消息转发到外部 AI Agent 服务
 - **模块化设计** - 通过环境变量灵活控制服务启停
+
+## 系统架构
+
+```mermaid
+flowchart TB
+    subgraph Hardware["🔊 小爱音箱硬件"]
+        Mic["麦克风"]
+        Speaker["扬声器"]
+        XiaoaiOS["小爱音箱系统"]
+    end
+
+    subgraph Client["📦 Rust Client 端补丁<br/>packages/client-rust"]
+        AudioCapture["音频采集/播放"]
+        WSServer["WebSocket Server<br/>(Port 4399)"]
+    end
+
+    subgraph OpenXiaoAI["🧠 open-xiaoai Server<br/>examples/bridge/"]
+        subgraph CoreServices["核心服务"]
+            MainApp["MainApp<br/>主控制器"]
+            EventMgr["EventManager<br/>事件总线"]
+            SpeakerMgr["SpeakerManager<br/>播放控制"]
+        end
+
+        subgraph AudioPipeline["音频处理管道"]
+            VAD["VAD (Silero)<br/>语音活动检测"]
+            KWS["KWS (Sherpa)<br/>关键词唤醒"]
+            Codec["Codec<br/>音频编解码"]
+        end
+
+        subgraph Connectors["连接器"]
+            XiaoaiPy["XiaoAI<br/>小爱接口"]
+            Xiaozhi["XiaoZhi<br/>小智 AI 客户端"]
+            OpenclawMgr["OpenClawManager<br/>OpenClaw 网关"]
+        end
+
+        subgraph ExternalAPI["外部接口"]
+            APIServer["API Server<br/>HTTP (Port 9092)"]
+            Config["config.py<br/>用户配置/回调"]
+        end
+    end
+
+    subgraph ExternalServices["☁️ 外部服务"]
+        XiaozhiServer["小智 AI 服务器<br/>api.tenclass.net"]
+        OpenclawGW["OpenClaw Gateway<br/>ws://localhost:18789"]
+    end
+
+    subgraph APIClients["🌐 API 客户端"]
+        Curl["curl / HTTP 客户端"]
+    end
+
+    %% ===== 音频数据流 =====
+    Mic -->|"PCM 音频"| AudioCapture
+    AudioCapture <-->|"WebSocket"| WSServer
+    WSServer <-->|"on_input_data"| XiaoaiPy
+    XiaoaiPy -->|"音频数据"| Codec
+    Codec --> VAD
+    VAD -->|"检测到语音"| KWS
+    KWS -->|"匹配唤醒词"| EventMgr
+
+    %% ===== 事件/控制流 =====
+    EventMgr -->|"wakeup()"| MainApp
+    MainApp -->|"状态管理"| SpeakerMgr
+    SpeakerMgr -->|"play()"| XiaoaiPy
+    XiaoaiPy -->|"on_output_data"| WSServer
+    WSServer -->|"音频输出"| AudioCapture
+    AudioCapture -->|"播放"| Speaker
+
+    %% ===== 小智 AI 连接 =====
+    MainApp -.->|"可选"| Xiaozhi
+    Xiaozhi <-->|"WebSocket"| XiaozhiServer
+
+    %% ===== OpenClaw 连接 =====
+    MainApp -.->|"可选"| OpenclawMgr
+    OpenclawMgr <-->|"WebSocket"| OpenclawGW
+
+    %% ===== API Server =====
+    MainApp -.->|"可选"| APIServer
+    APIServer <-->|"HTTP"| Curl
+    APIServer -->|"调用"| SpeakerMgr
+
+    %% ===== 配置回调 =====
+    Config -->|"before_wakeup<br/>after_wakeup"| EventMgr
+
+    %% ===== 小爱系统 =====
+    XiaoaiOS -->|"语音识别结果"| XiaoaiPy
+    XiaoaiPy -->|"TTS/控制"| XiaoaiOS
+
+    %% 样式定义
+    classDef hardware fill:#f9f,stroke:#333,stroke-width:2px
+    classDef rust fill:#f96,stroke:#333,stroke-width:2px
+    classDef core fill:#9cf,stroke:#333,stroke-width:2px
+    classDef audio fill:#9f9,stroke:#333,stroke-width:2px
+    classDef connector fill:#ff9,stroke:#333,stroke-width:2px
+    classDef api fill:#c9f,stroke:#333,stroke-width:2px
+    classDef external fill:#fcc,stroke:#333,stroke-width:2px
+
+    class Mic,Speaker,XiaoaiOS hardware
+    class AudioCapture,WSServer rust
+    class MainApp,EventMgr,SpeakerMgr core
+    class VAD,KWS,Codec audio
+    class XiaoaiPy,Xiaozhi,OpenclawMgr connector
+    class APIServer,Config api
+    class XiaozhiServer,OpenclawGW,Curl external
+```
+
+### 工作流程说明
+
+1. **唤醒流程（KWS → 小智 AI）**
+   ```
+   麦克风 → Rust Client → WebSocket → XiaoAI → Codec → VAD → KWS → EventManager →
+   before_wakeup()回调 → MainApp → XiaoZhi → 小智 AI 服务器
+   ```
+
+2. **小爱指令 → OpenClaw**
+   ```
+   小爱语音 → "让龙虾 xxx" → XiaoAI → before_wakeup() →
+   send_to_openclaw() → OpenClawManager → OpenClaw Gateway → AI Agent
+   ```
+
+3. **远程控制（HTTP API）**
+   ```
+   curl POST /api/play/text → API Server → SpeakerManager → XiaoAI →
+   Rust Client → 小爱音箱播放
+   ```
 
 ## 与上游的主要改进
 
@@ -40,8 +166,8 @@
 # 克隆代码
 git clone https://github.com/idootop/open-xiaoai.git
 
-# 进入当前项目根目录
-cd examples/xiaozhi
+# 进入当前项目目录
+cd examples/bridge
 ```
 
 然后把 `config.py` 文件里的配置修改成你自己的。
