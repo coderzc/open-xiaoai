@@ -1,0 +1,3 @@
+[submodule "examples/bridge"]
+	path = examples/bridge
+	url = https://github.com/coderzc/open-xiaoai-bridge.git
