@@ -23,7 +23,7 @@ sleep 3
 
 echo "✅ 网络连接成功"
 
-DOWNLOAD_BASE_URL="https://gitee.com/idootop/artifacts/releases/download/open-xiaoai-client"
+DOWNLOAD_BASE_URL="https://github.com/coderzc/open-xiaoai/releases/download/open-xiaoai-client"
 
 
 WORK_DIR="/data/open-xiaoai"

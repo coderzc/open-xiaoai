@@ -20,7 +20,7 @@ mkdir /data/open-xiaoai
 echo 'ws://192.168.31.227:4399' > /data/open-xiaoai/server.txt
 
 # 运行启动脚本 init.sh
-curl -sSfL https://gitee.com/idootop/artifacts/releases/download/open-xiaoai-client/init.sh | sh
+curl -sSfL https://raw.githubusercontent.com/coderzc/open-xiaoai/main/packages/client-rust/init.sh | sh
 ```
 
 > [!IMPORTANT]
@@ -32,7 +32,7 @@ curl -sSfL https://gitee.com/idootop/artifacts/releases/download/open-xiaoai-cli
 
 ```shell
 # 下载 boot.sh 文件到 /data/init.sh 开机时自启动
-curl -L -o /data/init.sh https://gitee.com/idootop/artifacts/releases/download/open-xiaoai-client/boot.sh
+curl -L -o /data/init.sh https://raw.githubusercontent.com/coderzc/open-xiaoai/main/packages/client-rust/boot.sh
 
 # 重启小爱音箱
 reboot

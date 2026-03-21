@@ -13,7 +13,9 @@ on:
 jobs:
   compile:
     runs-on: ubuntu-latest
-    
+    permissions:
+      contents: write
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -39,3 +41,11 @@ jobs:
         name: client-rust-binary
         path: packages/client-rust/target/armv7-unknown-linux-gnueabihf/release/client
         retention-days: 7
+
+    - name: Publish to GitHub Releases
+      if: github.event_name == 'push'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh release create open-xiaoai-client --title "open-xiaoai-client" --notes "Auto-built client binary" 2>/dev/null || true
+        gh release upload open-xiaoai-client packages/client-rust/target/armv7-unknown-linux-gnueabihf/release/client --clobber
