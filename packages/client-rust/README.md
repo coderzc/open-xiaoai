@@ -20,7 +20,7 @@ mkdir /data/open-xiaoai
 echo 'ws://192.168.31.227:4399' > /data/open-xiaoai/server.txt
 
 # 运行启动脚本 init.sh
-curl -sSfL https://raw.githubusercontent.com/coderzc/open-xiaoai/main/packages/client-rust/init.sh | sh
+curl -sSfL https://gitee.com/coderzc/open-xiaoai/raw/main/packages/client-rust/init.sh | sh
 ```
 
 > [!IMPORTANT]
@@ -32,7 +32,7 @@ curl -sSfL https://raw.githubusercontent.com/coderzc/open-xiaoai/main/packages/c
 
 ```shell
 # 下载 boot.sh 文件到 /data/init.sh 开机时自启动
-curl -L -o /data/init.sh https://raw.githubusercontent.com/coderzc/open-xiaoai/main/packages/client-rust/boot.sh
+curl -L -o /data/init.sh https://gitee.com/coderzc/open-xiaoai/raw/main/packages/client-rust/boot.sh
 
 # 重启小爱音箱
 reboot
@@ -45,7 +45,7 @@ reboot
 ```shell
 # 方式一：使用 init.sh 的 --update 参数强制更新（不启动）
 # 适合手动更新场景
-curl -sSfL https://raw.githubusercontent.com/coderzc/open-xiaoai/main/packages/client-rust/init.sh | sh -s -- --update
+curl -sSfL https://gitee.com/coderzc/open-xiaoai/raw/main/packages/client-rust/init.sh | sh -s -- --update
 
 # 方式二：删除本地 client 文件，下次启动时会自动重新下载
 rm /data/open-xiaoai/client
