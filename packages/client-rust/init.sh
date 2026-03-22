@@ -14,7 +14,7 @@ EOF
 set -e
 
 
-DOWNLOAD_BASE_URL="https://github.com/coderzc/open-xiaoai/releases/download/open-xiaoai-client"
+DOWNLOAD_BASE_URL="https://gitee.com/coderzc/open-xiaoai/releases/download/open-xiaoai-client"
 
 
 WORK_DIR="/data/open-xiaoai"
