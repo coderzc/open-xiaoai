@@ -1,9 +1,11 @@
 use std::process::Stdio;
 use std::sync::{Arc, LazyLock};
+use std::time::Duration;
 use tokio::io::AsyncWriteExt;
 use tokio::process::{Child, ChildStdin, Command};
 use tokio::sync::{mpsc, Mutex};
 use tokio::task::JoinHandle;
+use tokio::time::timeout;
 
 use crate::base::AppError;
 
@@ -43,7 +45,7 @@ impl AudioPlayer {
         }
 
         if let Some(mut write_thread) = self.write_thread.lock().await.take() {
-            let _ = write_thread.shutdown().await;
+            let _ = timeout(Duration::from_millis(100), write_thread.shutdown()).await;
             drop(write_thread);
         }
 
@@ -86,14 +88,14 @@ impl AudioPlayer {
         self.aplay_thread.lock().await.replace(aplay_thread);
         self.write_thread.lock().await.replace(stdin);
 
-        let (tx, mut rx) = mpsc::channel::<Vec<u8>>(100);
+        let (tx, mut rx) = mpsc::channel::<Vec<u8>>(50);
 
         let write_thread_clone = self.write_thread.clone();
         let player_task = tokio::spawn(async move {
             while let Some(bytes) = rx.recv().await {
                 let mut write_guard = write_thread_clone.lock().await;
                 if let Some(write_thread) = write_guard.as_mut() {
-                    let _ = write_thread.write_all(&bytes).await;
+                    let _ = timeout(Duration::from_millis(100), write_thread.write_all(&bytes)).await;
                 } else {
                     break;
                 }

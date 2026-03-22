@@ -17,6 +17,6 @@ pub static AUDIO_CONFIG: LazyLock<AudioConfig> = LazyLock::new(|| AudioConfig {
     channels: 1,
     bits_per_sample: 16,
     sample_rate: 16000,
-    period_size: 1440 / 4,
-    buffer_size: 1440,
+    period_size: 160,
+    buffer_size: 480,
 });

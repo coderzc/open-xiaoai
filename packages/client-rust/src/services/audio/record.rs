@@ -1,10 +1,12 @@
 use std::future::Future;
 use std::process::Stdio;
 use std::sync::{Arc, LazyLock};
+use std::time::Duration;
 use tokio::io::AsyncReadExt;
 use tokio::process::{Child, Command};
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
+use tokio::time::timeout;
 
 use crate::base::AppError;
 
@@ -50,7 +52,7 @@ impl AudioRecorder {
         }
 
         if let Some(mut arecord_thread) = self.arecord_thread.lock().await.take() {
-            let _ = arecord_thread.kill().await;
+            let _ = timeout(Duration::from_millis(100), arecord_thread.kill()).await;
         }
 
         *state = State::Idle;
@@ -84,12 +86,12 @@ impl AudioRecorder {
             let target_size = target_frames * bytes_per_frame;
             let read_size = read_frames * bytes_per_frame;
 
-            let mut accumulated_data = Vec::new();
+            let mut accumulated_data = Vec::with_capacity(target_size * 2);
             let mut buffer = vec![0u8; read_size];
 
             loop {
-                match stdout.read(&mut buffer).await {
-                    Ok(size) if size > 0 => {
+                match timeout(Duration::from_millis(500), stdout.read(&mut buffer)).await {
+                    Ok(Ok(size)) if size > 0 => {
                         accumulated_data.extend_from_slice(&buffer[..size]);
                         while accumulated_data.len() >= target_size {
                             let data_to_send =
@@ -180,6 +182,7 @@ fn spawn_arecord(config: &AudioConfig) -> Result<Child, AppError> {
             &config.period_size.to_string(),
         ])
         .stdout(Stdio::piped())
+        .stderr(Stdio::null())
         .spawn()?;
     Ok(child)
 }
