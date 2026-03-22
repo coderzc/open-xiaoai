@@ -35,20 +35,11 @@ jobs:
       working-directory: packages/client-rust
       run: cross build --release --target armv7-unknown-linux-gnueabihf
     
-    - name: Generate MD5 checksum
-      run: |
-        CLIENT_BIN="packages/client-rust/target/armv7-unknown-linux-gnueabihf/release/client"
-        md5sum "$CLIENT_BIN" | awk '{print $1}' > "$CLIENT_BIN.md5"
-        echo "Generated MD5:"
-        cat "$CLIENT_BIN.md5"
-    
     - name: Upload compiled binary
       uses: actions/upload-artifact@v4
       with:
         name: client-rust-binary
-        path: |
-          packages/client-rust/target/armv7-unknown-linux-gnueabihf/release/client
-          packages/client-rust/target/armv7-unknown-linux-gnueabihf/release/client.md5
+        path: packages/client-rust/target/armv7-unknown-linux-gnueabihf/release/client
         retention-days: 7
 
     - name: Publish to GitHub Releases
@@ -59,4 +50,3 @@ jobs:
         CLIENT_BIN="packages/client-rust/target/armv7-unknown-linux-gnueabihf/release/client"
         gh release create open-xiaoai-client --title "open-xiaoai-client" --notes "Auto-built client binary" 2>/dev/null || true
         gh release upload open-xiaoai-client "$CLIENT_BIN" --clobber
-        gh release upload open-xiaoai-client "$CLIENT_BIN.md5" --clobber
