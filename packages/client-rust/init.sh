@@ -25,25 +25,22 @@ if [ ! -d "$WORK_DIR" ]; then
     mkdir -p "$WORK_DIR"
 fi
 
-# 获取远程 MD5
-REMOTE_MD5=$(curl -sL "$DOWNLOAD_BASE_URL/client.md5" | awk '{print $1}')
+# 检查是否仅更新模式
+UPDATE_ONLY=false
+for arg in "$@"; do
+    if [ "$arg" = "-u" ] || [ "$arg" = "--update" ]; then
+        UPDATE_ONLY=true
+    fi
+done
 
-# 检查本地文件 MD5
-LOCAL_MD5=""
-if [ -f "$CLIENT_BIN" ]; then
-    LOCAL_MD5=$(md5sum "$CLIENT_BIN" 2>/dev/null | awk '{print $1}')
-fi
-
-# 对比 MD5，决定是否更新
-if [ -n "$REMOTE_MD5" ] && [ "$REMOTE_MD5" = "$LOCAL_MD5" ]; then
-    echo "✅ Client 端已是最新版本，跳过下载"
-else
-    echo "🔥 正在更新/下载 Client 端补丁程序..."
+# 下载/更新逻辑
+if [ ! -f "$CLIENT_BIN" ] || [ "$UPDATE_ONLY" = true ]; then
+    echo "🔥 正在下载 Client 端补丁程序..."
     TEMP_BIN="$CLIENT_BIN.tmp"
     if curl -L -# -o "$TEMP_BIN" "$DOWNLOAD_BASE_URL/client" && [ -f "$TEMP_BIN" ]; then
         chmod +x "$TEMP_BIN"
         mv "$TEMP_BIN" "$CLIENT_BIN"
-        echo "✅ Client 端补丁程序更新/下载完毕"
+        echo "✅ Client 端补丁程序下载完毕"
     else
         rm -f "$TEMP_BIN"
         if [ -f "$CLIENT_BIN" ]; then
@@ -55,6 +52,11 @@ else
     fi
 fi
 
+# 如果仅更新模式，更新完成后退出
+if [ "$UPDATE_ONLY" = true ]; then
+    echo "✅ 仅更新模式，不启动程序"
+    exit 0
+fi
 
 if [ -f "$WORK_DIR/server.txt" ]; then
     SERVER_ADDRESS=$(cat "$WORK_DIR/server.txt")

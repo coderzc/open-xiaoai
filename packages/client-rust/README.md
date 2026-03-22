@@ -38,6 +38,24 @@ curl -L -o /data/init.sh https://raw.githubusercontent.com/coderzc/open-xiaoai/m
 reboot
 ```
 
+## 更新 Client
+
+当需要更新 Client 端补丁程序时，可以通过以下方式：
+
+```shell
+# 方式一：使用 init.sh 的 --update 参数强制更新（不启动）
+# 适合手动更新场景
+curl -sSfL https://raw.githubusercontent.com/coderzc/open-xiaoai/main/packages/client-rust/init.sh | sh -s -- --update
+
+# 方式二：删除本地 client 文件，下次启动时会自动重新下载
+rm /data/open-xiaoai/client
+# 然后重启音箱或手动运行启动脚本
+```
+
+> [!NOTE]
+> boot.sh 脚本在开机启动时，如果检测到本地已有 client 文件则不会重新下载，以保证启动速度。
+> 如需更新请使用上述方式。
+
 ## 编译运行
 
 > [!TIP]
