@@ -11,7 +11,7 @@ async def before_wakeup(speaker, text, source):
     """
     if source == "kws":
         # 播放唤醒提示语
-        await speaker.play(text="你好主人，我是小智，请问有什么吩咐？")
+        await speaker.play(text="你好主人，请问有什么吩咐？")
         # 返回 True 唤醒小智 AI
         return True
 
@@ -64,7 +64,7 @@ APP_CONFIG = {
         "OTA_URL": "https://api.tenclass.net/xiaozhi/ota/",
         "WEBSOCKET_URL": "wss://api.tenclass.net/xiaozhi/v1/",
         "WEBSOCKET_ACCESS_TOKEN": "", #（可选）一般用不到这个值
-        "DEVICE_ID": "", #（可选）默认自动生成
-        "VERIFICATION_CODE": "", # 首次登陆时，验证码会在这里更新
+        "VERIFICATION_CODE": "", # 首次对话时，验证码会在这里更新
+        "DEVICE_ID": "", # 如果没有提示绑定设备，则将 DEVICE_ID 清空后，重启应用再次尝试
     },
 }

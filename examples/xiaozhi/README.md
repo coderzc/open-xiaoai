@@ -83,10 +83,6 @@ uv run main.py --mode xiaozhi
 
 ## 常见问题
 
-### Q：回答太长了，如何打断小智 AI 的回答？
-
-直接召唤“小爱同学”，即可打断小智 AI 的回答 ;)
-
 ### Q：第一次运行提示我输入验证码绑定设备，如何操作？
 
 第一次启动对话时，会有语音提示使用验证码绑定设备。请打开你的小智 AI [管理后台](https://xiaozhi.me/)，然后根据提示创建 Agent 绑定设备即可。验证码消息会在终端打印，或者打开你的 `config.py` 文件查看。
@@ -94,27 +90,22 @@ uv run main.py --mode xiaozhi
 ```py
 APP_CONFIG = {
     "xiaozhi": {
-        "VERIFICATION_INFO": "首次登录时，验证码会在这里更新",
+        "VERIFICATION_CODE": "", # 首次对话时，验证码会在这里更新
+        "DEVICE_ID": "", # 如果没有提示绑定设备，则将 DEVICE_ID 清空后，重启应用再次尝试
     },
     # ... 其他配置
 }
 ```
+
+如果能够正常和小智对话，但是没有收到绑定验证码的提示，说明随机生成的 `DEVICE_ID` 可能已经被其他设备绑定过了。
+
+此时可以将 `config.py`  里生成的 `DEVICE_ID` 改回 `"DEVICE_ID": ""`，然后重新启动应用进入绑定流程。
 
 PS：绑定设备成功后，可能需要重启应用才会生效。
 
-### Q：怎样使用自己部署的 [xiaozhi-esp32-server](https://github.com/xinnan-tech/xiaozhi-esp32-server) 服务？
+### Q：回答太长了，如何打断小智 AI 的回答？
 
-如果你想使用自己部署的 [xiaozhi-esp32-server](https://github.com/xinnan-tech/xiaozhi-esp32-server)，请更新 `config.py` 文件里的接口地址，然后重启应用。
-
-```py
-APP_CONFIG = {
-    "xiaozhi": {
-        "OTA_URL": "https://2662r3426b.vicp.fun/xiaozhi/ota/",
-        "WEBSOCKET_URL": "wss://2662r3426b.vicp.fun/xiaozhi/v1/",
-    },
-    # ... 其他配置
-}
-```
+直接召唤“小爱同学”，即可打断小智 AI 的回答 ;)
 
 ### Q：有时候话还没说完 AI 就开始回答了，如何优化？
 
@@ -132,7 +123,7 @@ APP_CONFIG = {
 
 ### Q：对话的时候，文字识别不是很准？
 
-文字识别结果取决于你的小智 AI 服务器端的语音识别方案，与本项目无关。
+文字识别结果取决于你的小智 AI 服务器端的语音识别方案。
 
 ### Q：唤醒词一直没有反应？
 
@@ -152,7 +143,21 @@ APP_CONFIG = {
 
 如果是英文唤醒词，可以尝试将最小发音用空格分开，比如：比如：'openai' 👉 'open ai'
 
-PS：如果还是不行，建议更换其他更易识别的唤醒词。
+PS：如果还是不行，建议更换其他更易识别的唤醒词，比如“天猫精灵”。
+
+### Q：怎样使用自己部署的 [xiaozhi-esp32-server](https://github.com/xinnan-tech/xiaozhi-esp32-server) 服务？
+
+如果你想使用自己部署的 [xiaozhi-esp32-server](https://github.com/xinnan-tech/xiaozhi-esp32-server)，请更新 `config.py` 文件里的接口地址，然后重启应用。
+
+```py
+APP_CONFIG = {
+    "xiaozhi": {
+        "OTA_URL": "https://2662r3426b.vicp.fun/xiaozhi/ota/",
+        "WEBSOCKET_URL": "wss://2662r3426b.vicp.fun/xiaozhi/v1/",
+    },
+    # ... 其他配置
+}
+```
 
 ### Q: 我想自己编译运行，模型文件在哪里下载？
 

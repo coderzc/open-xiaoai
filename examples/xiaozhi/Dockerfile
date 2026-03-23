@@ -1,57 +1,87 @@
+# ==============================
+# 构建阶段：多架构兼容、精简、提速
+# ==============================
 FROM python:3.12-slim AS builder
 
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+# 固定 shell，减少层
+SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
 
-# 更新源
+# 统一安装依赖（一次性 RUN，减少镜像层数）
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl build-essential libopus-dev \
+    build-essential \
+    curl \
+    libopus-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# 安装 Rust
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+# 安装 Rust（静默安装，自动添加环境）
+ENV CARGO_HOME=/root/.cargo \
+    PATH=/root/.cargo/bin:$PATH
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path
 
-# 安装 uv
-COPY --from=ghcr.io/astral-sh/uv:0.7 /uv /uvx /bin/
+# 复制 uv（官方固定路径）
+COPY --from=ghcr.io/astral-sh/uv:0.7 /uv /uvx /usr/local/bin/
 
-# 设置环境变量
-ENV BASH_ENV=/root/.bash_env
-RUN touch "$BASH_ENV"
-RUN echo '. "$BASH_ENV"' >> "$HOME/.bashrc"
-RUN echo '[ -s "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"' >> "$BASH_ENV"
-
-# 设置工作目录
+# 工作目录
 WORKDIR /app
 
 # 复制项目文件
 COPY examples/xiaozhi .
 COPY packages/client-rust ./client-rust
 
-# 构建
-RUN sed -i 's/\.\.\/\.\.\/packages\///g' Cargo.toml \
-    && cargo build --release
+# 修复 Cargo 路径
+RUN sed -i 's/\.\.\/\.\.\/packages\///g' Cargo.toml
 
-# 安装依赖
+# 构建 Rust（缓存加速）
+RUN --mount=type=cache,target=/root/.cargo/registry \
+    --mount=type=cache,target=/root/.cargo/git \
+    cargo build --release
+
+# Python 依赖安装（uv 缓存）
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv remove pyaudio && uv sync --locked --no-install-project --no-editable
 
-# 构建 wheel 并安装
-RUN uv run maturin build --release && uv remove maturin
+# 编译 maturin 并清理
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv run maturin build --release && uv remove maturin
 
-
+# ==============================
+# 运行阶段：极小体积、安全、跨架构
+# ==============================
 FROM python:3.12-slim
+
+SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
 
 WORKDIR /app
 
-# 更新源
+# 运行时依赖（最小化）
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libopus-dev \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
-ENV CLI=true
+# 自动识别架构
+ARG TARGETARCH
+ENV CLI=true \
+    LD_LIBRARY_PATH=/usr/local/lib:/app/.venv/lib/python3.12/site-packages/onnxruntime/capi
 
+# 复制构建产物
 COPY --from=builder /app/.venv /app/.venv
-COPY examples/xiaozhi/main.py . 
+COPY examples/xiaozhi/main.py .
 COPY examples/xiaozhi/xiaozhi ./xiaozhi
 
-# 先初始化关键词模型，然后启动主程序
-CMD ["/bin/bash", "-c", "source /app/.venv/bin/activate && python xiaozhi/services/audio/kws/keywords.py && python main.py"]
+# 自动下载对应架构的 onnxruntime
+RUN set -eux; \
+    case "${TARGETARCH}" in \
+      arm64)  ort_arch="aarch64" ;; \
+      amd64)  ort_arch="x64" ;; \
+      *) echo "不支持的架构: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac; \
+    curl -fsSL "https://github.com/microsoft/onnxruntime/releases/download/v1.23.2/onnxruntime-linux-${ort_arch}-1.23.2.tgz" -o /tmp/ort.tgz; \
+    tar -xzf /tmp/ort.tgz -C /tmp; \
+    cp /tmp/onnxruntime-linux-${ort_arch}-1.23.2/lib/libonnxruntime.so.1.23.2 /usr/local/lib/; \
+    ln -sf libonnxruntime.so.1.23.2 /usr/local/lib/libonnxruntime.so; \
+    ldconfig; \
+    rm -rf /tmp/ort.tgz /tmp/onnxruntime-linux-${ort_arch}-1.23.2
+
+# 启动命令（精简、直接）
+CMD ["/bin/bash", "-c", "source /app/.venv/bin/activate && python xiaozhi/services/audio/kws/keywords.py && exec python main.py"]

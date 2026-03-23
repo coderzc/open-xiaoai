@@ -113,3 +113,11 @@ fw_env -s boot_part boot1
 ./update.exe bulkcmd "setenv boot_part boot1"
 ./update.exe bulkcmd "saveenv"
 ```
+
+### 常见问题
+
+#### Q: 刷机之后，原来的小爱同学和设备操控还能正常使用吗？
+
+可以。本仓库发布的 patch 固件，对于原来的音响功能没有任何修改，一切如常。
+
+唯一需要注意的是，patch 后的固件关闭了系统更新功能，你可以按照上面的教程随时切换回原厂系统，恢复系统更新。

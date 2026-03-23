@@ -162,7 +162,9 @@ class _VAD:
                 continue
 
             # 读取缓冲区音频数据
-            frames = self.stream.read(self.frame_size)
+            frames = self.stream.read(
+                self.frame_size, exception_on_overflow=False
+            )
             if len(frames) != self.frame_size * 2:
                 time.sleep(0.01)
                 continue
