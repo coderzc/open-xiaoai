@@ -17,6 +17,7 @@ jobs:
     env:
       MI_USER: ${{ secrets.MI_USER }}
       MI_PASS: ${{ secrets.MI_PASS }}
+      MI_TOKEN: ${{ secrets.MI_TOKEN }}
       MI_DID: ${{ inputs.mi_did }}
       SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
 
@@ -36,6 +37,26 @@ jobs:
             exit 1
           fi
 
+      - name: Print build diagnostics
+        run: |
+          echo "== Build diagnostics =="
+          echo "Repository: $GITHUB_REPOSITORY"
+          echo "Ref: $GITHUB_REF"
+          echo "Actor: $GITHUB_ACTOR"
+          echo "Runner: $(uname -a)"
+          echo "Docker version:"
+          docker --version
+          echo "Input device identifier: $MI_DID"
+          if [ -n "$MI_TOKEN" ]; then
+            echo "Auth mode: MI_TOKEN + account"
+          else
+            echo "Auth mode: account password"
+          fi
+          echo "MI_USER configured: yes"
+          echo "MI_PASS configured: yes"
+          echo "MI_TOKEN configured: $([ -n "$MI_TOKEN" ] && echo yes || echo no)"
+          echo "SSH_PASSWORD configured: yes"
+
       - name: Build firmware
         id: build
         working-directory: packages/client-patch
@@ -43,14 +64,26 @@ jobs:
           rm -rf assets/*
           mkdir -p assets
 
+          echo "== Starting firmware build in Docker =="
+          echo "Working directory: $(pwd)"
+          echo "Assets directory: $(pwd)/assets"
+          echo "Patches directory: $(pwd)/patches"
+
           docker run --rm \
             --env MI_USER \
             --env MI_PASS \
+            --env MI_TOKEN \
             --env MI_DID \
             --env SSH_PASSWORD \
             -v "$(pwd)/assets:/app/assets" \
             -v "$(pwd)/patches:/app/patches" \
             idootop/open-xiaoai:latest
+
+          echo "== Docker build finished =="
+          echo "Assets contents:"
+          ls -la assets
+          echo "Discovered firmware directories:"
+          find assets -maxdepth 2 -type f | sort
 
           MODEL=$(cat assets/.model)
           VERSION=$(cat assets/.version)
@@ -70,6 +103,10 @@ jobs:
             echo "original_file=$ORIGINAL"
             echo "patched_file=$PATCHED"
           } >> "$GITHUB_OUTPUT"
+
+          echo "Detected model: $MODEL"
+          echo "Detected version: $VERSION"
+          echo "Release tag: $TAG"
 
       - name: Upload workflow artifacts
         uses: actions/upload-artifact@v4
