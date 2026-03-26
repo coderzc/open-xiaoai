@@ -10,7 +10,7 @@
 ## 快速开始
 
 > [!NOTE]
-> 以下操作需要先将小爱音箱刷机， 然后 SSH 连接到小爱音箱。👉 [教程](../../docs/flash.md)
+> 以下操作需要先将小爱音箱刷机， 然后 SSH 连接到小爱音箱。👉 [教程](https://github.com/idootop/open-xiaoai/blob/main/docs/flash.md)
 
 ```shell
 # 创建 open-xiaoai 文件夹
