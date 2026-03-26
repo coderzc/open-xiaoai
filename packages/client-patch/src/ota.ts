@@ -63,7 +63,9 @@ async function getOTA(channel: "release" | "current" | "stable" = "release") {
 }
 
 async function main() {
-  console.log(`🔥 正在获取设备信息...`);
+  if (!process.env.DEBUG_VERSION) {
+    console.log(`🔥 正在获取设备信息...`);
+  }
   let ota: any = {};
   if (process.env.OTA) {
     ota = JSON.parse(process.env.OTA);
@@ -75,7 +77,7 @@ async function main() {
     process.exit(1);
   }
   if (process.env.DEBUG_VERSION) {
-    console.log(JSON.stringify(ota, null, 4));
+    console.log(JSON.stringify(ota));
     return;
   }
   console.log(`🔥 正在获取 OTA 信息...`);

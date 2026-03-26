@@ -17,9 +17,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: 🔥 构建固件
         id: build
+        env:
+          OTA: ${{ inputs.ota }}
         run: |
           cd packages/client-patch
-          docker run --rm -e OTA=${{ inputs.ota }} -v $(pwd)/assets:/app/assets -v $(pwd)/patches:/app/patches idootop/open-xiaoai:latest
+          docker run --rm --env OTA -v $(pwd)/assets:/app/assets -v $(pwd)/patches:/app/patches idootop/open-xiaoai:latest
           MODEL=$(cat assets/.model)
           VERSION=$(cat assets/.version)
           TAG=${MODEL}_${VERSION}
