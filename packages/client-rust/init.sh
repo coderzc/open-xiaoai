@@ -62,6 +62,11 @@ if [ -f "$WORK_DIR/server.txt" ]; then
     SERVER_ADDRESS=$(cat "$WORK_DIR/server.txt")
 fi
 
+if [ -f "$WORK_DIR/token.txt" ]; then
+    OPEN_XIAOAI_TOKEN=$(cat "$WORK_DIR/token.txt")
+    export OPEN_XIAOAI_TOKEN
+fi
+
 echo "🔥 正在启动 Client 端补丁程序..."
 
 kill -9 `ps|grep "open-xiaoai/client"|grep -v grep|awk '{print $1}'` > /dev/null 2>&1 || true

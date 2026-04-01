@@ -19,6 +19,9 @@ mkdir /data/open-xiaoai
 # 设置 server 地址（注意替换成自己的 server 地址）
 echo 'ws://192.168.31.227:4399' > /data/open-xiaoai/server.txt
 
+# （可选）设置鉴权 token，与 server 端保持一致
+echo 'your-secret-token' > /data/open-xiaoai/token.txt
+
 # 运行启动脚本 init.sh
 curl -sSfL https://gitee.com/coderzc/open-xiaoai/raw/main/packages/client-rust/init.sh | sh
 ```
@@ -117,10 +120,13 @@ curl -# -o /data/open-xiaoai/client https://你的client文件下载链接
 # 授权
 chmod +x /data/open-xiaoai/client
 
-# 运行
+# 运行（不带鉴权）
 /data/open-xiaoai/client ws://你的 server 端地址（默认使用 4399 端口）
 
 # 比如：/data/open-xiaoai/client ws://192.168.31.227:4399
+
+# 运行（带鉴权，token 需与 server 端一致）
+OPEN_XIAOAI_TOKEN=your-secret-token /data/open-xiaoai/client ws://192.168.31.227:4399
 ```
 
 ## 注意事项
@@ -134,9 +140,19 @@ chmod +x /data/open-xiaoai/client
 > [!CAUTION]
 > 当你在公网上运行本项目时，应当提高警惕。🚨
 
-本项目只是一个基础的演示程序，抛砖引玉。诸如多设备连接管理、身份认证、通信数据加密、音频压缩传输等均未做处理。
+本项目只是一个基础的演示程序，抛砖引玉。诸如多设备连接管理、通信数据加密、音频压缩传输等均未做处理。
 
 其默认提供了**执行任意脚本**的能力演示，虽然在启动 Client 端时需要由你本人指定可信的 Server 端连接地址，但还是要务必小心！
+
+**鉴权配置（推荐）：** 在 server 端和 client 端同时设置相同的 `OPEN_XIAOAI_TOKEN` 环境变量，即可启用 `Authorization: Bearer <token>` 鉴权。未设置时不做鉴权（默认行为）。
+
+```shell
+# server 端（以 bridge 为例）
+OPEN_XIAOAI_TOKEN=your-secret-token python main.py
+
+# client 端（音箱上）
+echo 'your-secret-token' > /data/open-xiaoai/token.txt
+```
 
 > [!TIP]
 > 本项目 Rust 端通过 binding 与 Python 和 Node.js 端双向互调，实现了网络通信模块的共享复用。当然你也可以参考 Rust 端通信协议源码，在其他 Server 端重新实现 WebSocket 通信过程。

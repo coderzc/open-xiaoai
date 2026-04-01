@@ -32,8 +32,21 @@ impl AppClient {
     }
 
     pub async fn connect(&self, url: &str) -> Result<WsStream, AppError> {
-        let (ws_stream, _) = connect_async(url).await?;
-        Ok(WsStream::Client(ws_stream))
+        let token = std::env::var("OPEN_XIAOAI_TOKEN").unwrap_or_default();
+        if !token.is_empty() {
+            use tokio_tungstenite::tungstenite::client::IntoClientRequest;
+            use tokio_tungstenite::tungstenite::http::HeaderValue;
+            let mut request = url.into_client_request()?;
+            request.headers_mut().insert(
+                "Authorization",
+                HeaderValue::from_str(&format!("Bearer {}", token))?,
+            );
+            let (ws_stream, _) = connect_async(request).await?;
+            Ok(WsStream::Client(ws_stream))
+        } else {
+            let (ws_stream, _) = connect_async(url).await?;
+            Ok(WsStream::Client(ws_stream))
+        }
     }
 
     pub async fn run(&mut self) {
