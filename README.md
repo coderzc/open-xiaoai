@@ -87,6 +87,7 @@
 - https://github.com/yihong0618/xiaogpt
 - https://github.com/hanxi/xiaomusic
 - https://github.com/coderzc/open-xiaoai-bridge
+- https://github.com/YX2748198202-lab/xiaoai-remix
 
 ## 参考链接
 
